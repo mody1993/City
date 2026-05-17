@@ -5,14 +5,14 @@ const { WOLF } = wolfjs;
 const settings = {
     identity: process.env.U_MAIL || 'your_email@example.com',
     secret: process.env.U_PASS || 'your_password',
-    taskGroupId: 224 ,
-    depositGroupId: 224 ,
-    minuteInterval: 63 * 1000,
-    boxInterval: 3 * 60 * 1000
+    taskGroupId: 224 ,  // الروم اللي يلعب فيه مهام 
+    depositGroupId: 224 , // الروم اللي يودع فيه 
+    minuteInterval: 63 * 1000, //اذا عندك زمني 63 واذا ما عندك 306
+    boxInterval: 3 * 60 * 1000  // يفتح الصناديق كل 3 دقايق 
 };
 
 const MY_INFO = {
-    keywords: ["شكرّا أصحابي","اونرنا"], 
+    keywords: ["Ꮯଠᴜɴт"], //اكتب اسمك الصحيح هنا
     ownerId: "2481425"  
 };
 
