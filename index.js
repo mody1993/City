@@ -18,12 +18,10 @@ let isSystemActive = false;
 let b = null; 
 let isFarming = false; 
 
-// --- دالة فتح الصناديق (المنطق المضاف) ---
+// --- دالة فتح الصناديق ---
 async function handleBoxFarming(gold, silver, bronze, currentPoints, status) {
     if (isFarming) return;
     const isReady = status.includes('جاهز');
-    
-    // إذا كانت الحالة "جاهز" والنقاط كافية، لا تفتح صناديق
     if (isReady && currentPoints >= 40) return;
 
     isFarming = true;
@@ -31,7 +29,6 @@ async function handleBoxFarming(gold, silver, bronze, currentPoints, status) {
     let g = gold, s = silver, b = bronze;
     let queue = [];
 
-    // ترتيب الأولويات في الفتح
     while (g > 0 || s > 0 || b > 0) {
         if (isReady && p >= 40) break;
         if (g > 0) { queue.push('!مد صندوق فتح ذهبي'); g--; p += 4; }
@@ -41,7 +38,6 @@ async function handleBoxFarming(gold, silver, bronze, currentPoints, status) {
     }
 
     if (queue.length > 0) {
-        console.log(`[LOG] 🚜 بدء فتح ${queue.length} صندوق.`);
         for (const cmd of queue) {
             await client.messaging.sendGroupMessage(CHANNEL_TASKS, cmd);
             await new Promise(r => setTimeout(r, 10000));
@@ -50,16 +46,7 @@ async function handleBoxFarming(gold, silver, bronze, currentPoints, status) {
     isFarming = false;
 }
 
-// --- إدارة المؤقت ---
-function manageTimer() {
-    let intervalMs = isSystemActive ? 64000 : 306000;
-    if (b) clearInterval(b);
-    
-    // تنفيذ المهام فوراً عند تغيير المؤقت
-    performTasks(); 
-    b = setInterval(performTasks, intervalMs);
-}
-
+// --- إدارة المهام ---
 async function performTasks() {
     try {
         await client.messaging.sendGroupMessage(CHANNEL_TASKS, '!مد مهام');
@@ -68,7 +55,16 @@ async function performTasks() {
     } catch (e) { console.error(`[ERROR] ${e.message}`); }
 }
 
-// --- الدوال الأساسية (بدون تغيير في منطق الكابتشا) ---
+// --- المؤقت (مُعدل لمنع التكرار غير الضروري) ---
+function manageTimer() {
+    if (b) clearInterval(b);
+    let intervalMs = isSystemActive ? 64000 : 306000;
+    console.log(`[LOG] ⚙️ المؤقت مضبوط على ${isSystemActive ? "64" : "306"} ثانية.`);
+    performTasks(); 
+    b = setInterval(performTasks, intervalMs);
+}
+
+// --- دوال الكابتشا (تم تحديثها لتتوافق مع Tesseract v4+) ---
 async function isCaptchaByColor(buffer) {
     const { data, info } = await sharp(buffer).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
     let redPixels = 0;
@@ -107,6 +103,7 @@ async function solveCaptcha(buffer) {
     const processedBuffer = await sharp(buffer)
         .extract({ left: minX + margin, top: minY + margin, width: (maxX - minX) - (margin * 2), height: (maxY - minY) - (margin * 2) })
         .greyscale().normalize().linear(1.5, -0.2).sharpen().toBuffer();
+    
     const worker = await createWorker('eng+ara');
     await worker.setParameters({ tessedit_pageseg_mode: '7' });
     const { data: { text } } = await worker.recognize(processedBuffer);
@@ -134,7 +131,6 @@ client.on('groupMessage', async (message) => {
         return;
     }
 
-    // 2. تحليل الأوامر والزمن (هنا يكمن الحل)
     if (message.sourceSubscriberId !== TARGET_USER_ID) return;
     
     const body = message.body;
@@ -144,30 +140,28 @@ client.on('groupMessage', async (message) => {
     const pMatch = body.match(/نقاط الضمان:\s*(\d+)/);
     const statusMatch = body.match(/حالة الضمان[:\s]+(.*)/);
     
-    // التعديل الجوهري: [^\r\n]+ يضمن قراءة السطر الحالي فقط وعدم التداخل مع السطور التالية
+    // الحل الجذري للزمن: [^\r\n]+ تمنع التقاط أي شيء خارج سطر "الجهاز الزمني"
     const timeMatch = body.match(/الجهاز الزمني[:\s]+([^\r\n]+)/);
 
     // معالجة الصناديق
     if (gMatch && pMatch && statusMatch) {
         handleBoxFarming(
-            parseInt(gMatch[1]), 
+            parseInt(gMatch[1] || 0), 
             parseInt(body.match(/فضي:\s*(\d+)/)?.[1] || 0), 
             parseInt(body.match(/برونزي:\s*(\d+)/)?.[1] || 0), 
-            parseInt(pMatch[1]), 
+            parseInt(pMatch[1] || 0), 
             statusMatch[1]
         );
     }
 
-    // معالجة الزمن
+    // معالجة الزمن (بشرط عدم التكرار)
     if (timeMatch) {
         const timeStatus = timeMatch[1].trim(); 
         const isReady = statusMatch ? statusMatch[1].includes('جاهز') : false;
         const oldState = isSystemActive;
 
-        // المنطق الدقيق للحالة
         if (timeStatus.includes('غير نشط')) {
             isSystemActive = false;
-            // فقط إذا كان جاهزاً والوضع خامل، اطلب الصندوق
             if (isReady) {
                 await client.messaging.sendGroupMessage(CHANNEL_TASKS, '!مد صندوق ضمان وقت');
                 isSystemActive = true; 
@@ -176,7 +170,7 @@ client.on('groupMessage', async (message) => {
             isSystemActive = true; 
         }
 
-        // لا تقم بإعادة ضبط المؤقت إلا إذا تغيرت الحالة فعلياً
+        // تحديث المؤقت فقط إذا تغيرت الحالة فعلياً
         if (oldState !== isSystemActive) {
             manageTimer();
         }
