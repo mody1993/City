@@ -3,62 +3,63 @@ import wolfjs from 'wolf.js';
 const { WOLF } = wolfjs;
 const client = new WOLF();
 
+// --- الإعدادات ---
 const TARGET_USER_ID = 76023604;
 const CHANNEL_TASKS = 224;
 
-let lastKnownState = null;
-let b = null;
+// --- متغيرات النظام (مهمة جداً) ---
+let lastKnownState = null; // يبدأ بـ null ليتم التفعيل أول مرة فقط
+let b = null; 
 
-// دالة المهام
+// --- دالة المهام ---
 async function performTasks() {
     try {
+        console.log(`[LOG] 🚀 تنفيذ المهام...`);
         await client.messaging.sendGroupMessage(CHANNEL_TASKS, '!مد مهام');
         await new Promise(r => setTimeout(r, 2000));
         await client.messaging.sendGroupMessage(CHANNEL_TASKS, '!مد تحالف ايداع كل');
     } catch (e) { console.error(`[ERROR] ${e.message}`); }
 }
 
-// دالة المؤقت
-function manageTimer(isActive) {
+// --- دالة ضبط المؤقت (القلب النابض) ---
+function setTimer(isActive) {
+    // [القفل]: إذا كانت الحالة الجديدة هي نفس الحالة السابقة، لا تفعل شيئاً
     if (lastKnownState === isActive) return;
-    console.log(`[LOG] ⚙️ تغيير الحالة إلى: ${isActive ? "نشط" : "غير نشط"}`);
+
+    // تحديث الحالة
     lastKnownState = isActive;
+    
+    // مسح المؤقت القديم
     if (b) clearInterval(b);
+    
+    // تحديد الوقت الجديد
     let intervalMs = isActive ? 64000 : 306000;
-    performTasks();
+    
+    console.log(`[LOG] ✅ تم تغيير الحالة لـ: ${isActive ? "نشط" : "غير نشط"}. ضبط المؤقت على ${intervalMs/1000} ثانية.`);
+    
+    performTasks(); // تنفيذ فوري
     b = setInterval(performTasks, intervalMs);
 }
 
+// --- معالجة الرسائل ---
 client.on('groupMessage', async (message) => {
-    // 1. فحص المرسل
     if (message.sourceSubscriberId !== TARGET_USER_ID) return;
-    
-    // 2. طباعة نص الرسالة المستلمة في الـ Console (هذا السطر سيكشف لنا المشكلة)
-    console.log("📥 رسالة مستلمة من البوت:");
-    console.log(message.body);
-    console.log("-----------------------");
 
-    const body = message.body;
+    // تقسيم الرسالة لأسطر
+    const lines = message.body.split('\n');
+    const timeLine = lines.find(line => line.includes('الجهاز الزمني'));
 
-    // 3. البحث باستخدام Includes العام (بدون تقسيم أسطر لضمان الشمولية)
-    if (body.includes('الجهاز الزمني')) {
-        // إذا كان السطر يحتوي على كلمة "غير نشط" فهو خامل
-        const isActive = !body.includes('غير نشط');
-        manageTimer(isActive);
-    }
-
-    // منطق الصناديق
-    if (body.includes('حالة الضمان') && body.includes('جاهز')) {
-        const pMatch = body.match(/نقاط الضمان:\s*(\d+)/);
-        if (pMatch && parseInt(pMatch[1]) < 40) {
-            await client.messaging.sendGroupMessage(CHANNEL_TASKS, '!مد صندوق ضمان وقت');
-        }
+    if (timeLine) {
+        // [المنطق]: إذا كان السطر لا يحتوي "غير نشط"، فهو نشط حتماً
+        const isNowActive = !timeLine.includes('غير نشط');
+        
+        // إرسال الحالة للقفل (سيعمل فقط إذا تغيرت الحالة)
+        setTimer(isNowActive);
     }
 });
 
 client.on('ready', () => {
-    console.log("🚀 البوت متصل وجاهز للفحص.");
-    manageTimer(false); 
+    console.log("🚀 البوت متصل ومستعد.");
 });
 
 client.login(process.env.U_MAIL, process.env.U_PASS);
