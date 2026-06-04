@@ -8,15 +8,18 @@ const { WOLF } = wolfjs;
 const client = new WOLF();
 
 // --- الإعدادات ---
-const TARGET_USER_ID = 76023604;
-const CHANNEL_ID = 224;
+const TARGET_USER_ID = 80055399;
+const CHANNEL_ID = 81889058;
 const ALLOWED_PLAYERS = ['أوكسجينه', 'أوكسجيته', 'أوكسجيئه'];
 
 let globalTimer = 0;
 
-// الدالة الوحيدة للتحكم بالإرسال - تضمن دائماً الهاشتاج في البداية
+/**
+ * الدالة المعدلة: تضيف الرمز المخفي U+2069 في النهاية
+ * لإجبار التطبيق على الحفاظ على ترتيب الهاشتاج والكلمة
+ */
 function formatAnswer(text) {
-    return "#" + text.trim();
+    return "#" + text.trim() + "\u2069";
 }
 
 function escapeRegExp(string) {
