@@ -16,49 +16,46 @@ const ACCOUNTS = [
     { email: process.env.U_MAIL_6, password: process.env.U_PASS_6, allowedPlayers: ['MLK'] }
 ];
 
-// ================== ثابت للجميع ==================
+// ================== CONSTANTS ==================
 const CHANNEL_ID = 569;
 const TARGET_USER_ID = 84520028;
 
 // ================== HELPERS ==================
 function cleanText(text) {
     if (!text) return "";
-    const match = text.match(/[a-zA-Z0-9\u0621-\u064A]+/g);
-    return match ? match.join('') : "";
+    return (text.match(/[a-zA-Z0-9\u0621-\u064A]+/g) || []).join('');
 }
 
 function formatAnswer(text) {
     return "#" + cleanText(text);
 }
 
-// ================== BOT ==================
-function createBotInstance(config) {
+// ================== BOT FACTORY ==================
+function createBot(config) {
 
-    const bot = new WOLF();
+    const client = new WOLF();
 
     let globalTimer = 0;
-    let solvedCache = new Set();
 
     // ================= CAPTCHA =================
     async function isCaptchaByColor(buffer) {
         const { data, info } = await sharp(buffer).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
 
-        let redPixels = 0;
+        let red = 0;
         const total = info.width * info.height;
 
         for (let i = 0; i < data.length; i += 4) {
             if (data[i] > 120 && data[i] > data[i + 1] + 30 && data[i] > data[i + 2] + 30) {
-                redPixels++;
+                red++;
             }
         }
 
-        return (redPixels / total) * 100 > 40;
+        return (red / total) * 100 > 40;
     }
 
     async function extractPlayerName(buffer) {
         try {
             const processed = await sharp(buffer).greyscale().threshold(160).toBuffer();
-
             const worker = await createWorker('ara+eng');
             const { data: { text } } = await worker.recognize(processed);
             await worker.terminate();
@@ -72,7 +69,6 @@ function createBotInstance(config) {
     }
 
     async function solveCaptcha(buffer) {
-
         const { data, info } = await sharp(buffer).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
 
         let minX = info.width, minY = info.height, maxX = 0, maxY = 0, found = false;
@@ -94,12 +90,7 @@ function createBotInstance(config) {
         if (!found) return null;
 
         const processed = await sharp(buffer)
-            .extract({
-                left: minX + 10,
-                top: minY + 10,
-                width: (maxX - minX) - 20,
-                height: (maxY - minY) - 20
-            })
+            .extract({ left: minX + 10, top: minY + 10, width: (maxX - minX) - 20, height: (maxY - minY) - 20 })
             .greyscale()
             .sharpen()
             .toBuffer();
@@ -113,52 +104,37 @@ function createBotInstance(config) {
         return cleanText(text);
     }
 
-    // ================== فتح الصناديق ==================
-    async function processBoxOpening(g, s, b, points, isNotReady) {
+    // ================== BOX ==================
+    async function processBox(g, s, b, points, notReady) {
 
         const send = async (cmd) => {
-            await bot.messaging.sendGroupMessage(CHANNEL_ID, cmd);
-            await new Promise(r => setTimeout(r, 10000));
+            await client.messaging.sendGroupMessage(CHANNEL_ID, cmd);
+            await new Promise(r => setTimeout(r, 8000));
         };
 
-        if (isNotReady) {
-
-            while (g-- > 0) await send('!مد صندوق فتح ذهبي');
-            while (s-- > 0) await send('!مد صندوق فتح فضي');
-            while (b-- > 0) await send('!مد صندوق فتح برونزي');
-
+        if (notReady) {
+            while (g--) await send('!مد صندوق فتح ذهبي');
+            while (s--) await send('!مد صندوق فتح فضي');
+            while (b--) await send('!مد صندوق فتح برونزي');
             return;
         }
 
-        if (points < 42) {
+        let need = 42 - points;
 
-            let need = 42 - points;
-
-            while (need > 0) {
-
-                if (need >= 4 && g > 0) {
-                    await send('!مد صندوق فتح ذهبي');
-                    g--; need -= 4;
-                }
-                else if (need >= 2 && s > 0) {
-                    await send('!مد صندوق فتح فضي');
-                    s--; need -= 2;
-                }
-                else if (need >= 1 && b > 0) {
-                    await send('!مد صندوق فتح برونزي');
-                    b--; need -= 1;
-                }
-                else break;
-            }
+        while (need > 0) {
+            if (need >= 4 && g > 0) { await send('!مد صندوق فتح ذهبي'); g--; need -= 4; }
+            else if (need >= 2 && s > 0) { await send('!مد صندوق فتح فضي'); s--; need -= 2; }
+            else if (need >= 1 && b > 0) { await send('!مد صندوق فتح برونزي'); b--; need -= 1; }
+            else break;
         }
     }
 
-    // ================== فحص الصناديق ==================
+    // ================== BOX CHECK ==================
     async function sendBoxCommand() {
 
         return new Promise((resolve) => {
 
-            bot.messaging.sendGroupMessage(CHANNEL_ID, '!مد صندوق');
+            client.messaging.sendGroupMessage(CHANNEL_ID, '!مد صندوق');
 
             const handler = async (message) => {
 
@@ -169,28 +145,24 @@ function createBotInstance(config) {
 
                     const body = message.body;
 
-                    const isNotReady = body.includes("غير جاهز");
+                    const notReady = body.includes("غير جاهز");
 
                     const boxes = body.match(/برونزي:\s*(\d+)\s*\|\s*فضي:\s*(\d+)\s*\|\s*ذهبي:\s*(\d+)/);
                     const points = body.match(/نقاط الضمان:\s*(\d+)\/50/);
 
-                    await processBoxOpening(
+                    await processBox(
                         boxes ? +boxes[3] : 0,
                         boxes ? +boxes[2] : 0,
                         boxes ? +boxes[1] : 0,
                         points ? +points[1] : 0,
-                        isNotReady
+                        notReady
                     );
 
-                    // الجهاز الزمني
-                    const timerLine = body.split('\n').find(l =>
-                        l.includes('الجهاز الزمني') || l.includes('⏳')
-                    );
+                    const timerLine = body.split('\n').find(l => l.includes('الجهاز الزمني'));
 
                     let temp = 0;
 
                     if (timerLine && !timerLine.includes("غير نشط")) {
-
                         const h = timerLine.match(/(\d+)س/);
                         const m = timerLine.match(/(\d+)د/);
                         const s = timerLine.match(/(\d+)ث/);
@@ -199,46 +171,42 @@ function createBotInstance(config) {
                         if (m) temp += +m[1] * 60;
                         if (s) temp += +s[1];
 
-                    } else if (!isNotReady) {
-
-                        await bot.messaging.sendGroupMessage(CHANNEL_ID, '!مد صندوق ضمان وقت');
+                    } else if (!notReady) {
+                        await client.messaging.sendGroupMessage(CHANNEL_ID, '!مد صندوق ضمان وقت');
                         temp = 3 * 3600;
                     }
 
                     globalTimer = temp;
 
-                    bot.removeListener('groupMessage', handler);
+                    client.removeListener('groupMessage', handler);
                     resolve();
                 }
             };
 
-            bot.on('groupMessage', handler);
+            client.on('groupMessage', handler);
 
             setTimeout(() => {
-                bot.removeListener('groupMessage', handler);
+                client.removeListener('groupMessage', handler);
                 resolve();
             }, 12000);
         });
     }
 
     // ================== LOOP ==================
-    async function startTaskLoop() {
+    async function loop() {
 
         while (true) {
             try {
 
-                await bot.messaging.sendGroupMessage(CHANNEL_ID, '!مد مهام');
+                await client.messaging.sendGroupMessage(CHANNEL_ID, '!مد مهام');
                 await new Promise(r => setTimeout(r, 2000));
 
-                await bot.messaging.sendGroupMessage(CHANNEL_ID, '!مد تحالف ايداع كل');
+                await client.messaging.sendGroupMessage(CHANNEL_ID, '!مد تحالف ايداع كل');
 
                 if (globalTimer > 0) {
-
                     globalTimer = Math.max(0, globalTimer - 63);
                     await new Promise(r => setTimeout(r, 63000));
-
                 } else {
-
                     await new Promise(r => setTimeout(r, 303000));
                     await sendBoxCommand();
                 }
@@ -251,7 +219,7 @@ function createBotInstance(config) {
     }
 
     // ================== EVENTS ==================
-    bot.on('groupMessage', async (message) => {
+    client.on('groupMessage', async (message) => {
 
         if (
             message.sourceSubscriberId !== TARGET_USER_ID ||
@@ -265,49 +233,39 @@ function createBotInstance(config) {
 
             if (!(await isCaptchaByColor(buffer))) return;
 
-            const playerName = await extractPlayerName(buffer);
+            const player = await extractPlayerName(buffer);
 
-            if (!config.allowedPlayers.some(p => playerName.includes(p))) return;
+            if (!config.allowedPlayers.some(p => player.includes(p))) return;
 
             const code = await solveCaptcha(buffer);
 
             if (!code) return;
 
-            if (solvedCache.has(code)) return;
+            await client.messaging.sendGroupMessage(CHANNEL_ID, formatAnswer(code));
 
-            solvedCache.add(code);
-            setTimeout(() => solvedCache.delete(code), 30000);
-
-            await bot.messaging.sendGroupMessage(
-                CHANNEL_ID,
-                formatAnswer(code)
-            );
-
-        } catch (err) {
-            console.error(`[${config.email}] captcha error`, err.message);
+        } catch (e) {
+            console.error(`[${config.email}] captcha error`, e.message);
         }
     });
 
-    // ================== READY ==================
-    bot.on('ready', async () => {
-
+    client.on('ready', async () => {
         console.log(`✅ Logged in: ${config.email}`);
 
         await sendBoxCommand();
         setInterval(sendBoxCommand, 30 * 60 * 1000);
 
-        startTaskLoop();
+        loop();
     });
 
-    bot.login(config.email, config.password);
+    client.login(config.email, config.password);
 }
 
-// ================== START ==================
+// ================== START MULTI ACCOUNTS ==================
 ACCOUNTS.forEach((acc, i) => {
 
     setTimeout(() => {
-        console.log(`🚀 تشغيل الحساب ${i + 1}`);
-        createBotInstance(acc);
+        console.log(`🚀 Starting account ${i + 1}`);
+        createBot(acc);
     }, i * 35000);
 
 });
