@@ -1,4 +1,4 @@
-name: XO Bot Runner
+name: King Bot Runner
 
 on:
   push:
@@ -28,9 +28,25 @@ jobs:
         run: |
           rm -rf node_modules package-lock.json
           npm install --no-audit --no-fund
-          
+
       - name: Run Bot
         env:
-          U_MAIL: ${{ secrets.U_MAIL }}
-          U_PASS: ${{ secrets.U_PASS }}
+          U_MAIL_1: ${{ secrets.U_MAIL_1 }}
+          U_PASS_1: ${{ secrets.U_PASS_1 }}
+
+          U_MAIL_2: ${{ secrets.U_MAIL_2 }}
+          U_PASS_2: ${{ secrets.U_PASS_2 }}
+
+          U_MAIL_3: ${{ secrets.U_MAIL_3 }}
+          U_PASS_3: ${{ secrets.U_PASS_3 }}
+
+          U_MAIL_4: ${{ secrets.U_MAIL_4 }}
+          U_PASS_4: ${{ secrets.U_PASS_4 }}
+
+          U_MAIL_5: ${{ secrets.U_MAIL_5 }}
+          U_PASS_5: ${{ secrets.U_PASS_5 }}
+
+          U_MAIL_6: ${{ secrets.U_MAIL_6 }}
+          U_PASS_6: ${{ secrets.U_PASS_6 }}
+
         run: node index.js
