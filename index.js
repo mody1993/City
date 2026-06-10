@@ -9,7 +9,7 @@ const { WOLF } = wolfjs;
 // ================== ACCOUNTS ==================
 const ACCOUNTS = [
     {
-       email: process.env.U_MAIL_1,
+        email: process.env.U_MAIL_1,
         password: process.env.U_PASS_1,
         allowedPlayers: ['King']
     },
@@ -154,7 +154,7 @@ function createBotInstance(config) {
         return cleanText(text);
     }
 
-    // ============ BOX ============
+    // ============ BOX SYSTEM ============
     async function sendBoxCommand() {
 
         return new Promise((resolve) => {
@@ -167,6 +167,52 @@ function createBotInstance(config) {
                     message.targetGroupId === CHANNEL_ID &&
                     message.body.startsWith('/me 📦 حالة الصناديق')
                 ) {
+
+                    const body = message.body;
+
+                    // =====================================================
+                    // 📌 هنا يتم معالجة “الجهاز الزمني” بشكل صحيح
+                    // =====================================================
+
+                    // نقسم الرسالة إلى أسطر عشان نقرأ كل جزء بدقة
+                    const lines = body.split('\n');
+
+                    // نبحث عن سطر الجهاز الزمني
+                    const timerLine = lines.find(l => l.includes('الجهاز الزمني'));
+
+                    let tempTimer = 0;
+
+                    // إذا الجهاز الزمني موجود وفيه وقت (يعني نشط)
+                    const isTimerActive = timerLine && !timerLine.includes("غير نشط");
+
+                    if (isTimerActive) {
+
+                        // استخراج الساعات / الدقائق / الثواني
+                        const h = timerLine.match(/(\d+)س/);
+                        const m = timerLine.match(/(\d+)د/);
+                        const s = timerLine.match(/(\d+)ث/);
+
+                        if (h) tempTimer += parseInt(h[1]) * 3600;
+                        if (m) tempTimer += parseInt(m[1]) * 60;
+                        if (s) tempTimer += parseInt(s[1]);
+
+                    } else {
+
+                        // ❗ إذا الجهاز الزمني غير نشط
+                        // نقوم بتفعيل صندوق ضمان الوقت تلقائياً
+                        await bot.messaging.sendGroupMessage(
+                            CHANNEL_ID,
+                            '!مد صندوق ضمان وقت'
+                        );
+
+                        // تعيين وقت افتراضي (3 ساعات)
+                        tempTimer = 3 * 60 * 60;
+                    }
+
+                    // حفظ التايمر داخل البوت
+                    globalTimer = tempTimer;
+
+                    // إنهاء الاستماع بعد معالجة الرسالة
                     bot.removeListener('groupMessage', handler);
                     resolve();
                 }
