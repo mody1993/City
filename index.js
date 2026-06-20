@@ -7,7 +7,6 @@ import fetch from 'node-fetch';
 const { WOLF } = wolfjs;
 // ================== ACCOUNTS ==================
 
-
 const ACCOUNTS = [
 {
 email: process.env.U_MAIL_1,
@@ -50,9 +49,46 @@ password: process.env.U_PASS_6,
 allowedPlayers: ['MLK'],
 channelId: 330865,
 targetUserId: 84520024
+},
+
+// الحسابات الجديدة
+
+{
+email: process.env.U_MAIL_7,
+password: process.env.U_PASS_7,
+allowedPlayers: ['CRN'],
+channelId: 569,
+targetUserId: 84520028
+},
+{
+email: process.env.U_MAIL_8,
+password: process.env.U_PASS_8,
+allowedPlayers: ['REX'],
+channelId: 569,
+targetUserId: 84520028
+},
+{
+email: process.env.U_MAIL_9,
+password: process.env.U_PASS_9,
+allowedPlayers: ['LRD'],
+channelId: 569,
+targetUserId: 84520028
+},
+{
+email: process.env.U_MAIL_10,
+password: process.env.U_PASS_10,
+allowedPlayers: ['ROY'],
+channelId: 569,
+targetUserId: 84520028
+},
+{
+email: process.env.U_MAIL_11,
+password: process.env.U_PASS_11,
+allowedPlayers: ['EMP'],
+channelId: 569,
+targetUserId: 84520028
 }
 ];
-
 // ================== CONSTANTS ==================
 
 
