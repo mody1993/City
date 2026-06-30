@@ -105,9 +105,8 @@ function createBot(config) {
                     const body = message.body;
                     const lines = body.split('\n');
                     
-                    // 🌟 1. فحص ذكي لسطر الضمان يتخطى الرموز التعبيرية والمسافات تماماً
-                    const guaranteeLine = lines.find(l => l.includes('الضمان'));
-                    const isGuaranteeReady = guaranteeLine ? guaranteeLine.includes('جاهز') : false;
+                    // 🌟 الحل الجذري: البحث الشامل والتأكد من وجود "حالة الضمان" و "جاهز" في نفس السطر لمنع التداخل مع نقاط الضمان
+                    const isGuaranteeReady = lines.some(l => l.includes('حالة الضمان') && l.includes('جاهز'));
                     const notReady = !isGuaranteeReady; 
 
                     // استخراج أعداد الصناديق والنقاط بدقة
@@ -119,10 +118,10 @@ function createBot(config) {
                     const b = boxes ? parseInt(boxes[1], 10) : 0;
                     const p = pointsMatch ? parseInt(pointsMatch[1], 10) : 0;
 
-                    // معالجة الصناديق أولاً بناءً على حالة الجاهزية
+                    // معالجة الصناديق أولاً بناءً على حالة الجاهزية الصحيحة
                     await processBox(g, s, b, p, notReady);
 
-                    // 🌟 2. فحص سطر الجهاز الزمني بدقة متناهية سطر بسطر
+                    // فحص سطر الجهاز الزمني بدقة متناهية سطر بسطر
                     const timerLine = lines.find(l => l.includes('الجهاز الزمني'));
                     let tempSeconds = 0;
 
@@ -132,15 +131,14 @@ function createBot(config) {
                             tempSeconds = 63;
                             isTimeDeviceActive = true; 
                         } else if (timerLine.includes('غير نشط')) {
-                            // 🎯 الحل الجذري للمشكلة: غير نشط والضمان جاهز -> تفعيل فوري لـ 3 ساعات
+                            // 🎯 تفعيل فوري ومضمون لـ 3 ساعات عند الجاهزية الصحيحة للضمان
                             if (isGuaranteeReady) {
-                                console.log(`[${botName}] 🎯 الجهاز الزمني غير نشط ولكن الضمان جاهز! إرسال أمر تفعيل ضمان الوقت فوراً...`);
+                                console.log(`[${botName}] 🎯 الجهاز الزمني غير نشط ولكن الضمان جاهز قطعيّاً! إرسال أمر تفعيل ضمان الوقت فوراً...`);
                                 await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
-                                tempSeconds = 63; // فحص مجدد وسريع بعد دقيقة لقراءة الـ 3 ساعات الجديدة بنجاح
+                                tempSeconds = 63; // فحص سريع بعد دقيقة لتحديث قراءة الوقت الجديد
                                 isTimeDeviceActive = true;
                             } else {
-                                // غير نشط والضمان غير جاهز فعلياً -> خمول أمني تام لمدة ساعة
-                                console.log(`[${botName}] ⏳ الجهاز الزمني غير نشط والضمان غير جاهز. خمول مبرمج لمدة ساعة.`);
+                                console.log(`[${botName}] ⏳ الجهاز الزمني غير نشط والضمان غير جاهز فعلياً. خمول مبرمج لمدة ساعة.`);
                                 tempSeconds = 0;
                                 isTimeDeviceActive = false; 
                             }
