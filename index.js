@@ -31,18 +31,18 @@ const specialUsersSet = new Set(SPECIAL_ROOM_USERS);
 
 // ================== ACCOUNTS LIST (مصفوفة الحسابات والأوامر الخاصة بها) ==================
 const ACCOUNTS = [
-    { email: process.env.U_MAIL_1,  password: process.env.U_PASS_1,  allowedPlayers: ['King'],    cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_2,  password: process.env.U_PASS_2,  allowedPlayers: ['KSA'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_3,  password: process.env.U_PASS_3,  allowedPlayers: ['MKH'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_4,  password: process.env.U_PASS_4,  allowedPlayers: ['SAA'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_5,  password: process.env.U_PASS_5,  allowedPlayers: ['JDH'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_6,  password: process.env.U_PASS_6,  allowedPlayers: ['MLK'],     cmd: '!مد تحالف ايداع كل' }, 
-    { email: process.env.U_MAIL_7,  password: process.env.U_PASS_7,  allowedPlayers: ['CRN'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_8,  password: process.env.U_PASS_8,  allowedPlayers: ['REX'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_9,  password: process.env.U_PASS_9,  allowedPlayers: ['LRD'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_10, password: process.env.U_PASS_10, allowedPlayers: ['ROY'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_11, password: process.env.U_PASS_11, allowedPlayers: ['EMP'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_12, password: process.env.U_PASS_12, allowedPlayers: ['NOR'],     cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_1,  password: process.env.U_PASS_1,  allowedPlayers: ['King'],   cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_2,  password: process.env.U_PASS_2,  allowedPlayers: ['KSA'],    cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_3,  password: process.env.U_PASS_3,  allowedPlayers: ['MKH'],    cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_4,  password: process.env.U_PASS_4,  allowedPlayers: ['SAA'],    cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_5,  password: process.env.U_PASS_5,  allowedPlayers: ['JDH'],    cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_6,  password: process.env.U_PASS_6,  allowedPlayers: ['MLK'],    cmd: '!مد تحالف ايداع كل' }, 
+    { email: process.env.U_MAIL_7,  password: process.env.U_PASS_7,  allowedPlayers: ['CRN'],    cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_8,  password: process.env.U_PASS_8,  allowedPlayers: ['REX'],    cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_9,  password: process.env.U_PASS_9,  allowedPlayers: ['LRD'],    cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_10, password: process.env.U_PASS_10, allowedPlayers: ['ROY'],    cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_11, password: process.env.U_PASS_11, allowedPlayers: ['EMP'],    cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_12, password: process.env.U_PASS_12, allowedPlayers: ['NOR'],    cmd: '!مد تحالف ايداع كل' },
     { email: process.env.U_MAIL_13, password: process.env.U_PASS_13, allowedPlayers: ['Passion'], cmd: '!مد تحالف ايداع كل' }
 ];
 
@@ -211,7 +211,7 @@ function createBot(config) {
                 await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
                 
                 if (isTimeDeviceActive) {
-                    await sleep(61000); // الوضع السريع التزامني Mعتاد (كل 63 ثانية إجمالاً)
+                    await sleep(61000); // الوضع السريع التزامني المعتاد (كل 63 ثانية إجمالاً)
                 } else {
                     // 🎯 تطبيق التوقيت المطلق للحالة الثانية: كل 5 دقائق و3 ثوانٍ بالتمام (2000 + 301000 = 303000ms)
                     console.log(`[${botName}] ⚠️ الجهاز الزمني غير نشط! وضع الأمان لدورة اللعب (كل 5 دقائق و 3 ثوانٍ)...`);
@@ -258,19 +258,21 @@ function createBot(config) {
         }
     }
 
-    // ================== 🥷 LOOP 4: STEAL LOOP (دورة السرقة التلقائية بعد المهام كل 3 دقائق و 3 ثواني) ==================
+    // ================== 🥷 LOOP 4: STEAL LOOP (دورة السرقة والإيداع كل 3 دقائق و 3 ثواني) ==================
     async function stealLoop() {
         while (true) {
             try {
-                console.log(`[${botName}] 📋 إرسال أمر المهام قبل السرقة...`);
-                await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
-                await sleep(2000); // انتظار ثانيتين لضمان الترتيب
-
                 console.log(`[${botName}] 🥷 إرسال أمر السرقة التلقائي (!مد اسرق) في غرفة اللعب...`);
                 await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد اسرق');
                 
-                // 183000ms ناقص 2000ms يساوي 181000ms للحفاظ على المجموع الكلي (3 دقائق و3 ثوانٍ) بدقة
-                await sleep(181000); 
+                // انتظار 3 ثواني بناءً على طلبك قبل الأمر التالي
+                await sleep(3000); 
+
+                console.log(`[${botName}] 💰 إرسال أمر إيداع التحالف (!مد تحالف ايداع كل) في غرفة اللعب...`);
+                await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد تحالف ايداع كل');
+                
+                // 183000ms (المجموع الكلي) ناقص 3000ms (وقت الانتظار أعلاه) يساوي 180000ms (3 دقائق) للحفاظ على الدقة
+                await sleep(180000); 
             } catch (e) {
                 console.error(`[${botName}] ❌ خطأ في دورة السرقة:`, e.message);
                 await sleep(5000);
@@ -306,7 +308,7 @@ function createBot(config) {
             playLoop();
             openBoxLoop();
             checkLoop();
-            stealLoop(); // انطلاق دورة السرقة المنظمة هنا
+            stealLoop(); // انطلاق دورة السرقة المنظمة والمعدلة هنا
 
             // 5. 🛑 مؤقت الأمان للإيقاف التلقائي بعد 5 ساعات و 58 دقيقة
             setTimeout(async () => {
