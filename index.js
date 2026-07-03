@@ -7,7 +7,7 @@ const { WOLF } = wolfjs;
 
 // 1. الإعدادات الرئيسية الافتراضية للعب (الغرفة الرئيسية)
 const MAIN_ROOM = {
-   channelId: 569,
+    channelId: 569,
  targetUserId: 84520028  // مرسل الكابتشا الرئيسي للعب
 };
 
@@ -31,18 +31,18 @@ const specialUsersSet = new Set(SPECIAL_ROOM_USERS);
 
 // ================== ACCOUNTS LIST (مصفوفة الحسابات والأوامر الخاصة بها) ==================
 const ACCOUNTS = [
-    { email: process.env.U_MAIL_1,  password: process.env.U_PASS_1,  allowedPlayers: ['King'],   cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_2,  password: process.env.U_PASS_2,  allowedPlayers: ['KSA'],    cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_3,  password: process.env.U_PASS_3,  allowedPlayers: ['MKH'],    cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_4,  password: process.env.U_PASS_4,  allowedPlayers: ['SAA'],    cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_5,  password: process.env.U_PASS_5,  allowedPlayers: ['JDH'],    cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_6,  password: process.env.U_PASS_6,  allowedPlayers: ['MLK'],    cmd: '!مد تحالف ايداع كل' }, 
-    { email: process.env.U_MAIL_7,  password: process.env.U_PASS_7,  allowedPlayers: ['CRN'],    cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_8,  password: process.env.U_PASS_8,  allowedPlayers: ['REX'],    cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_9,  password: process.env.U_PASS_9,  allowedPlayers: ['LRD'],    cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_10, password: process.env.U_PASS_10, allowedPlayers: ['ROY'],    cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_11, password: process.env.U_PASS_11, allowedPlayers: ['EMP'],    cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_12, password: process.env.U_PASS_12, allowedPlayers: ['NOR'],    cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_1,  password: process.env.U_PASS_1,  allowedPlayers: ['King'],    cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_2,  password: process.env.U_PASS_2,  allowedPlayers: ['KSA'],     cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_3,  password: process.env.U_PASS_3,  allowedPlayers: ['MKH'],     cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_4,  password: process.env.U_PASS_4,  allowedPlayers: ['SAA'],     cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_5,  password: process.env.U_PASS_5,  allowedPlayers: ['JDH'],     cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_6,  password: process.env.U_PASS_6,  allowedPlayers: ['MLK'],     cmd: '!مد تحالف ايداع كل' }, 
+    { email: process.env.U_MAIL_7,  password: process.env.U_PASS_7,  allowedPlayers: ['CRN'],     cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_8,  password: process.env.U_PASS_8,  allowedPlayers: ['REX'],     cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_9,  password: process.env.U_PASS_9,  allowedPlayers: ['LRD'],     cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_10, password: process.env.U_PASS_10, allowedPlayers: ['ROY'],     cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_11, password: process.env.U_PASS_11, allowedPlayers: ['EMP'],     cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_12, password: process.env.U_PASS_12, allowedPlayers: ['NOR'],     cmd: '!مد تحالف ايداع كل' },
     { email: process.env.U_MAIL_13, password: process.env.U_PASS_13, allowedPlayers: ['Passion'], cmd: '!مد تحالف ايداع كل' }
 ];
 
@@ -129,36 +129,53 @@ function createBot(config) {
 
     // ================== ADVANCED MECHANICAL BOX CHECK (الفحص الميكانيكي المطور) ==================
     async function sendBoxCommand() {
-        console.log(`[${botName}] 🔍 [المرحلة 1] جاري إرسال أمر الفحص الكلي (!مد صندوق) وتحليل الرد...`);
-        
-        // 1. إرسال الفحص الأول وتحليله
+        console.log(`[${botName}] 🔍 [المرحلة 1] جاري إرسال أمر الفحص...`);
         const firstReply = await getBoxStatus();
-        if (!firstReply) {
-            console.log(`[${botName}] 🚨 فشل الفحص الأول بسبب تعليق اللعبة! فرض وضع الأمان (63 ثانية)...`);
-            globalTimer = 63; 
-            isTimeDeviceActive = true; 
-            return;
-        }
-
-        // 2. إرسال أمر ضمان الوقت فوراً بعد تحليل الرد الأول
-        console.log(`[${botName}] ⏱️ [المرحلة 2] إرسال أمر ضمان الوقت (!مد صندوق ضمان وقت)...`);
-        await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
-        await sleep(3000); // انتظار 3 ثوانٍ لضمان معالجة الأمر في السيرفر
-
-        // 3. إرسال أمر !مد صندوق للمرة الثانية لتحديث الحالات الحقيقية بعد الضمان
-        console.log(`[${botName}] 🔍 [المرحلة 3] إرسال أمر الفحص الثاني (!مد صندوق) لتحديث البيانات...`);
-        const secondReply = await getBoxStatus();
-        if (!secondReply) {
-            console.log(`[${botName}] 🚨 فشل الفحص الثاني بعد الضمان! فرض وضع الأمان (63 ثانية)...`);
-            globalTimer = 63; 
-            isTimeDeviceActive = true; 
-            return;
-        }
-
-        // 4. تحليل الرد الثاني لفتح الصناديق للوصول لنقطة الأمان (42) وإعادة ضبط المؤقت
-        const cleanBody = secondReply.replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
-        const lines = cleanBody.split('\n');
         
+        if (!firstReply) {
+            console.log(`[${botName}] 🚨 فشل الفحص (السيرفر لا يرد)! دورة اللعب مستمرة، لكن الفحص سيدخل في وضع الأمان (5 دقائق)...`);
+            globalTimer = 300; 
+            return;
+        }
+
+        let cleanBody = firstReply.replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
+        let lines = cleanBody.split('\n');
+        let timerLine = lines.find(l => l.includes('الجهاز الزمني'));
+
+        let stateChanged = false;
+
+        // التحقق من حالة الجهاز الزمني واتخاذ قرار التنشيط
+        if (timerLine) {
+            if (timerLine.includes('موقوف')) {
+                console.log(`[${botName}] 🎛️ الجهاز موقوف! إرسال أمر تشغيل...`);
+                await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
+                await sleep(3000);
+                stateChanged = true;
+            } else if (timerLine.includes('غير نشط')) {
+                console.log(`[${botName}] ⏳ الجهاز غير نشط! إرسال أمر ضمان وقت...`);
+                await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
+                await sleep(3000);
+                stateChanged = true;
+            }
+        }
+
+        let finalReply = firstReply;
+        
+        // إذا تم تنشيط الجهاز، نفحص مرة ثانية لنحصل على الوقت الفعلي
+        if (stateChanged) {
+            console.log(`[${botName}] 🔍 [المرحلة 2] تحديث البيانات بعد التنشيط...`);
+            finalReply = await getBoxStatus();
+            if (!finalReply) {
+                console.log(`[${botName}] 🚨 فشل الفحص الثاني! وضع الأمان للفحص (5 دقائق)...`);
+                globalTimer = 300;
+                return;
+            }
+            cleanBody = finalReply.replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
+            lines = cleanBody.split('\n');
+            timerLine = lines.find(l => l.includes('الجهاز الزمني'));
+        }
+
+        // تحليل الرد لفتح الصناديق
         const guaranteeLine = lines.find(l => l.includes('الضمان') && !l.includes('نقاط'));
         const isGuaranteeReady = guaranteeLine ? guaranteeLine.includes('جاهز') : false;
         const notReady = !isGuaranteeReady; 
@@ -171,34 +188,15 @@ function createBot(config) {
         const b = boxes ? parseInt(boxes[1], 10) : 0;
         const p = pointsMatch ? parseInt(pointsMatch[1], 10) : 0;
 
-        // فتح الصناديق بناءً على البيانات المحدثة
         await processBox(g, s, b, p, notReady);
 
-        // إعادة ضبط المؤقت الذكي بناءً على الوقت المتبقي في اللعبة
-        const timerLine = lines.find(l => l.includes('الجهاز الزمني'));
+        // قراءة التوقيت وتسجيله بدقة مع 5 ثواني أمان
         let tempSeconds = 0;
-
         if (timerLine) {
-            if (timerLine.includes('غير نشط')) {
-                console.log(`[${botName}] ⏳ الجهاز غير نشط. لعب آمن وفحص بعد 10 دقائق...`);
-                tempSeconds = 600; 
+            if (timerLine.includes('غير نشط') || timerLine.includes('موقوف')) {
+                tempSeconds = 300; // أمان في حال عدم التنشيط لسبب ما
                 isTimeDeviceActive = false;
-            } else if (timerLine.includes('موقوف')) {
-                console.log(`[${botName}] 🎛️ الجهاز موقوف! تشغيل فوري...`);
-                await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
-                
-                const h = timerLine.match(/(\d+)س/);
-                const m = timerLine.match(/(\d+)د/);
-                const sMatch = timerLine.match(/(\d+)ث/);
-
-                if (h) tempSeconds += parseInt(h[1], 10) * 3600;
-                if (m) tempSeconds += parseInt(m[1], 10) * 60;
-                if (sMatch) tempSeconds += parseInt(sMatch[1], 10);
-                
-                tempSeconds = tempSeconds > 0 ? tempSeconds + 60 : 63; 
-                isTimeDeviceActive = true;
             } else {
-                // الجهاز نشط ويعمل -> قراءة التوقيت التنازلي المتبقي بدقة
                 const h = timerLine.match(/(\d+)س/);
                 const m = timerLine.match(/(\d+)د/);
                 const sMatch = timerLine.match(/(\d+)ث/);
@@ -207,38 +205,55 @@ function createBot(config) {
                 if (m) tempSeconds += parseInt(m[1], 10) * 60;
                 if (sMatch) tempSeconds += parseInt(sMatch[1], 10);
                 
-                tempSeconds += 60; // دقيقة أمان فوق التوقيت المتبقي
+                tempSeconds += 5; // 5 ثواني أمان فوق التوقيت المتبقي
                 isTimeDeviceActive = true;
             }
         }
 
-        globalTimer = tempSeconds;
-        console.log(`[${botName}] ⏱️ معالجة الفحص الميكانيكي تمت -> المؤقت القادم: ${globalTimer} ثانية.`);
+        globalTimer = tempSeconds > 0 ? tempSeconds : 300;
+        console.log(`[${botName}] ⏱️ الفحص انتهى -> دورة الفحص القادمة بعد: ${globalTimer} ثانية.`);
     }
 
-    // ================== 🎮 LOOP 1: PLAYING ROOM (دورة غرف اللعب التلقائية) ==================
-    async function playLoop() {
+    // ================== 🎮 ACTION LOOP (الدورة الموحدة: مهام - لعب - سرقة - إيداع) ==================
+    async function mainActionLoop() {
+        let minuteCounter = 0;
         while (true) {
             try {
+                minuteCounter++;
+                const isStealMinute = (minuteCounter === 3);
+
+                // 1. أمر المهام
                 await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
                 await sleep(2000);
 
+                // 2. أمر اللعب
                 await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
-                
-                if (isTimeDeviceActive) {
-                    await sleep(61000); 
-                } else {
-                    console.log(`[${botName}] ⚠️ الجهاز الزمني غير نشط! وضع الأمان لدورة اللعب (كل 5 دقائق و 3 ثوانٍ)...`);
-                    await sleep(301000); 
+                await sleep(2000);
+
+                // 3. السرقة (فقط في الدقيقة الثالثة)
+                if (isStealMinute) {
+                    console.log(`[${botName}] 🥷 دقيقة السرقة! إرسال أمر اسرق...`);
+                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد اسرق');
+                    await sleep(2000);
                 }
+
+                // 4. الإيداع (دائماً في كل دقيقة)
+                console.log(`[${botName}] 💰 إرسال الإيداع...`);
+                await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد تحالف ايداع كل');
+                
+                if (isStealMinute) minuteCounter = 0; // تصفير العداد بعد الدقيقة الثالثة
+
+                // الانتظار لبدء الدقيقة التالية (~61 ثانية لاستكمال الدورة)
+                await sleep(61000); 
+
             } catch (e) {
-                console.error(`[${botName}] ❌ خطأ في دورة اللعب:`, e.message);
+                console.error(`[${botName}] ❌ خطأ في الدورة الموحدة:`, e.message);
                 await sleep(5000);
             }
         }
     }
 
-    // ================== 📦 LOOP 2: FIVE MINUTE OPEN (دورة الفتح الدوري كل 5 دقائق) ==================
+    // ================== 📦 LOOP 2: FIVE MINUTE OPEN (دورة الفتح الدوري) ==================
     async function openBoxLoop() {
         while (true) {
             try {
@@ -257,36 +272,16 @@ function createBot(config) {
         while (true) {
             try {
                 if (globalTimer > 0) {
-                    console.log(`[${botName}] ⏱️ ارتباط ذكي: البوت ينام لـ ${globalTimer} ثانية تزامناً مع انتهاء حالة الفحص السابقة...`);
+                    console.log(`[${botName}] ⏱️ ارتباط ذكي: دورة الفحص تنام لـ ${globalTimer} ثانية...`);
                     await sleep(globalTimer * 1000); 
                 } else {
-                    await sleep(600000); 
+                    await sleep(300000); 
                 }
                 
                 await sendBoxCommand();
 
             } catch (e) {
                 console.error(`[${botName}] ❌ خطأ في دورة الفحص:`, e.message);
-                await sleep(5000);
-            }
-        }
-    }
-
-    // ================== 🥷 LOOP 4: STEAL LOOP (دورة السرقة والإيداع كل 3 دقائق و 3 ثواني) ==================
-    async function stealLoop() {
-        while (true) {
-            try {
-                console.log(`[${botName}] 🥷 إرسال أمر السرقة التلقائي (!مد اسرق) في غرفة اللعب...`);
-                await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد اسرق');
-                
-                await sleep(3000); 
-
-                console.log(`[${botName}] 💰 إرسال أمر إيداع التحالف (!مد تحالف ايداع كل) في غرفة اللعب...`);
-                await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد تحالف ايداع كل');
-                
-                await sleep(180000); 
-            } catch (e) {
-                console.error(`[${botName}] ❌ خطأ في دورة السرقة:`, e.message);
                 await sleep(5000);
             }
         }
@@ -299,30 +294,15 @@ function createBot(config) {
         try {
             console.log(`[${botName}] 🚀 بدء تنفيذ تسلسل أوامر التشغيل بالتتابع...`);
             
-            // 1. قناة الفحص أولاً
-            await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
-            await sleep(3000);
-            
-            await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
-            await sleep(3000);
-            
-            // 2. قناة اللعب
-            await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
-            await sleep(3000);
-            
-            await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
-            await sleep(3000);
-            
-            // 3. إطلاق أمر الفحص الميكانيكي الأول المطور
+            // إطلاق أمر الفحص الميكانيكي الأول المطور (هو سيتكفل بالتشغيل والضمان)
             await sendBoxCommand();
             
-            // 4. انطلاق الدورات التزامنية بكفاءة واستقرار تام
-            playLoop();
+            // انطلاق الدورات التزامنية بكفاءة واستقرار تام
+            mainActionLoop();
             openBoxLoop();
             checkLoop();
-            stealLoop(); 
 
-            // 5. 🛑 مؤقت الأمان للإيقاف التلقائي بعد 5 ساعات و 58 دقيقة
+            // 🛑 مؤقت الأمان للإيقاف التلقائي بعد 5 ساعات و 58 دقيقة
             setTimeout(async () => {
                 console.log(`[${botName}] 🛑 مضت 5 ساعات و 58 دقيقة! إرسال أمر (!مد ايقاف) في قناة الفحص...`);
                 try {
