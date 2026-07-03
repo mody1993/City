@@ -220,30 +220,31 @@ function createBot(config) {
         while (true) {
             try {
                 minuteCounter++;
-                const isStealMinute = (minuteCounter === 3);
 
-                // 1. أمر المهام
-                await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
-                await sleep(2000);
+                if (minuteCounter === 3) {
+                    // الدقيقة الثالثة الحركية: مهام ➔ اسرق ➔ إيداع
+                    console.log(`[${botName}] 🥷 الدقيقة [3]: إرسال (مهام + سرقة + إيداع)...`);
+                    
+                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
+                    await sleep(2000);
 
-                // 2. أمر اللعب
-                await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
-                await sleep(2000);
-
-                // 3. السرقة (فقط في الدقيقة الثالثة)
-                if (isStealMinute) {
-                    console.log(`[${botName}] 🥷 دقيقة السرقة! إرسال أمر اسرق...`);
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد اسرق');
                     await sleep(2000);
+
+                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
+                    
+                    minuteCounter = 0; // تصفير العداد لإعادة الدورة من جديد
+                } else {
+                    // الدقائق العادية (1 و 2): مهام ➔ إيداع
+                    console.log(`[${botName}] 🔄 الدقيقة [${minuteCounter}]: إرسال (مهام + إيداع)...`);
+                    
+                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
+                    await sleep(2000);
+
+                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
                 }
 
-                // 4. الإيداع (دائماً في كل دقيقة)
-                console.log(`[${botName}] 💰 إرسال الإيداع...`);
-                await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد تحالف ايداع كل');
-                
-                if (isStealMinute) minuteCounter = 0; // تصفير العداد بعد الدقيقة الثالثة
-
-                // الانتظار لبدء الدقيقة التالية (~61 ثانية لاستكمال الدورة)
+                // الانتظار لبدء الدقيقة التالية
                 await sleep(61000); 
 
             } catch (e) {
