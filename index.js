@@ -7,8 +7,8 @@ const { WOLF } = wolfjs;
 
 // 1. الإعدادات الرئيسية الافتراضية للعب (الغرفة الرئيسية)
 const MAIN_ROOM = {
-     channelId: 569,
- targetUserId: 84520028  // مرسل الكابتشا الرئيسي للعب
+   channelId: 569,
+   targetUserId: 84520028  // مرسل الكابتشا الرئيسي للعب
 };
 
 // 2. إعدادات الغرفة الفرعية/الثانية للعب
@@ -20,7 +20,7 @@ const SECOND_ROOM = {
 // 3. 🎯 قنوات وغرفة فحص الصناديق الجديدة
 const CHECK_ROOM = {
      channelId: 18654218,
- targetUserId: 76023242   // معرف حساب اللعبة (المرسل) في قناة الفحص
+     targetUserId: 76023242   // معرف حساب اللعبة (المرسل) في قناة الفحص
 };
 
 // 4. أسماء الحسابات التي تريد نقلها للغرفة الثانية في اللعب
@@ -58,6 +58,11 @@ function createBot(config) {
     
     let globalTimer = 0;  
     let isTimeDeviceActive = false; 
+
+    // مستمع لأخطاء الحساب والاتصال لتكشف سبب اختفاء أي حساب
+    client.on('error', (err) => {
+        console.error(`🚨 [${botName}] خطأ في الاتصال أو الحساب:`, err.message || err);
+    });
 
     // ================== BOX PROCESSING (قناة الفحص) ==================
     async function processBox(g, s, b, points, notReady) {
@@ -222,7 +227,6 @@ function createBot(config) {
                 minuteCounter++;
 
                 if (minuteCounter === 3) {
-                    // الدقيقة الثالثة الحركية: مهام ➔ اسرق ➔ إيداع
                     console.log(`[${botName}] 🥷 الدقيقة [3]: إرسال (مهام + سرقة + إيداع)...`);
                     
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
@@ -233,9 +237,8 @@ function createBot(config) {
 
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
                     
-                    minuteCounter = 0; // تصفير العداد لإعادة الدورة من جديد
+                    minuteCounter = 0; 
                 } else {
-                    // الدقائق العادية (1 و 2): مهام ➔ إيداع
                     console.log(`[${botName}] 🔄 الدقيقة [${minuteCounter}]: إرسال (مهام + إيداع)...`);
                     
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
@@ -244,7 +247,6 @@ function createBot(config) {
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
                 }
 
-                // الانتظار لبدء الدقيقة التالية
                 await sleep(61000); 
 
             } catch (e) {
@@ -288,20 +290,29 @@ function createBot(config) {
         }
     }
 
-    // ================== EVENTS (تسلسل أوامر التشغيل بالتتابع الصارم) ==================
+    // ================== EVENTS (تسلسل أوامر التشغيل بالتتابع) ==================
     client.on('ready', async () => {
         console.log(`✅ الحساب [${botName}] شبك بنجاح! اللعب في [${PLAY_CHANNEL_ID}] | الفحص في [${CHECK_ROOM.channelId}]`);
         
         try {
-            console.log(`[${botName}] 🚀 بدء تنفيذ تسلسل أوامر التشغيل بالتتابع...`);
+            // [تعديل جوهري] 1. دخول الغرف تلقائياً لضمان عدم تعليق الأوامر
+            try {
+                await client.group.join(PLAY_CHANNEL_ID);
+                await client.group.join(CHECK_ROOM.channelId);
+                console.log(`[${botName}] 🚪 دخل الغرف بنجاح.`);
+            } catch (joinErr) {
+                console.warn(`[${botName}] ⚠️ تنبيه أثناء دخول الغرف تلقائياً:`, joinErr.message);
+            }
+
+            console.log(`[${botName}] 🚀 بدء تشغيل الدورات بشكل متوازٍ ومستقل...`);
             
-            // إطلاق أمر الفحص الميكانيكي الأول المطور (هو سيتكفل بالتشغيل والضمان)
-            await sendBoxCommand();
-            
-            // انطلاق الدورات التزامنية بكفاءة واستقرار تام
+            // [تعديل جوهري] 2. تشغيل الدورات بدون إعاقة (Non-blocking) لكي لا يتعطل اللعب إذا علق الفحص
             mainActionLoop();
             openBoxLoop();
             checkLoop();
+
+            // إطلاق الفحص الأول بشكل مستقل
+            sendBoxCommand().catch(err => console.error(`[${botName}] خطأ في فحص الصناديق الأولي:`, err.message));
 
             // 🛑 مؤقت الأمان للإيقاف التلقائي بعد 5 ساعات و 58 دقيقة
             setTimeout(async () => {
