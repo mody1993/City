@@ -219,7 +219,7 @@ function createBot(config) {
         console.log(`[${botName}] ⏱️ الفحص انتهى -> دورة الفحص القادمة بعد: ${globalTimer} ثانية.`);
     }
 
-    // ================== 🎮 ACTION LOOP (الدورة الموحدة الموجهة ذكياً) ==================
+    // ================== 🎮 ACTION LOOP (الدورة الموحدة بالتواقيت الفريش) ==================
     async function mainActionLoop() {
         let minuteCounter = 0;
         while (true) {
@@ -227,13 +227,13 @@ function createBot(config) {
                 minuteCounter++;
 
                 if (minuteCounter === 3) {
-                    console.log(`[${botName}] 🥷 الدقيقة [3]: إرسال الأوامر الموزعة بين اللعب والفحص...`);
+                    console.log(`[${botName}] 🥷 الدقيقة [3]: تشغيل (3ث) -> مهام (2ث) -> اسرق (2ث) -> إيداع (3ث) -> ايقاف...`);
                     
-                    // 1. إرسال أمر تشغيل في قناة الفحص
+                    // 1. إرسال أمر تشغيل في قناة الفحص والانتظار 3 ثوانٍ
                     await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
-                    await sleep(2000);
+                    await sleep(3000);
 
-                    // 2. إرسال أوامر اللعب والسرقة في القناة الرئيسية
+                    // 2. إرسال أوامر اللعب والسرقة في القناة الرئيسية (بانتظار ثانيتين بين كل أمر)
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
                     await sleep(2000);
 
@@ -241,25 +241,25 @@ function createBot(config) {
                     await sleep(2000);
 
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
-                    await sleep(2000);
+                    await sleep(3000); // الانتظار 3 ثوانٍ بعد الإيداع
 
                     // 3. إرسال أمر ايقاف في قناة الفحص
                     await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد ايقاف');
                     
                     minuteCounter = 0; 
                 } else {
-                    console.log(`[${botName}] 🔄 الدقيقة [${minuteCounter}]: إرسال الأوامر الموزعة بين اللعب والفحص...`);
+                    console.log(`[${botName}] 🔄 الدقيقة [${minuteCounter}]: تشغيل (3ث) -> مهام (2ث) -> إيداع (3ث) -> ايقاف...`);
                     
-                    // 1. إرسال أمر تشغيل في قناة الفحص
+                    // 1. إرسال أمر تشغيل في قناة الفحص والانتظار 3 ثوانٍ
                     await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
-                    await sleep(2000);
+                    await sleep(3000);
 
                     // 2. إرسال أوامر اللعب في القناة الرئيسية
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
                     await sleep(2000);
 
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
-                    await sleep(2000);
+                    await sleep(3000); // الانتظار 3 ثوانٍ بعد الإيداع
 
                     // 3. إرسال أمر ايقاف في قناة الفحص
                     await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد ايقاف');
