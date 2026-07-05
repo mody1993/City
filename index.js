@@ -219,7 +219,7 @@ function createBot(config) {
         console.log(`[${botName}] ⏱️ الفحص انتهى -> دورة الفحص القادمة بعد: ${globalTimer} ثانية.`);
     }
 
-    // ================== 🎮 ACTION LOOP (الدورة الموحدة المعدلة) ==================
+    // ================== 🎮 ACTION LOOP (الدورة الموحدة الموجهة ذكياً) ==================
     async function mainActionLoop() {
         let minuteCounter = 0;
         while (true) {
@@ -227,42 +227,42 @@ function createBot(config) {
                 minuteCounter++;
 
                 if (minuteCounter === 3) {
-                    console.log(`[${botName}] 🥷 الدقيقة [3]: إرسال (تشغيل + مهام + سرقة + إيداع + ايقاف)...`);
+                    console.log(`[${botName}] 🥷 الدقيقة [3]: إرسال الأوامر الموزعة بين اللعب والفحص...`);
                     
-                    // 1. إرسال أمر تشغيل قبل المهام
-                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد تشغيل');
+                    // 1. إرسال أمر تشغيل في قناة الفحص
+                    await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
                     await sleep(2000);
 
+                    // 2. إرسال أوامر اللعب والسرقة في القناة الرئيسية
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
                     await sleep(2000);
 
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد اسرق');
                     await sleep(2000);
 
-                    // 2. إرسال أمر الحساب (الإيداع)
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
                     await sleep(2000);
 
-                    // 3. إرسال أمر ايقاف بعد الإيداع مباشرة
-                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد ايقاف');
+                    // 3. إرسال أمر ايقاف في قناة الفحص
+                    await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد ايقاف');
                     
                     minuteCounter = 0; 
                 } else {
-                    console.log(`[${botName}] 🔄 الدقيقة [${minuteCounter}]: إرسال (تشغيل + مهام + إيداع + ايقاف)...`);
+                    console.log(`[${botName}] 🔄 الدقيقة [${minuteCounter}]: إرسال الأوامر الموزعة بين اللعب والفحص...`);
                     
-                    // 1. إرسال أمر تشغيل قبل المهام
-                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد تشغيل');
+                    // 1. إرسال أمر تشغيل في قناة الفحص
+                    await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
                     await sleep(2000);
 
+                    // 2. إرسال أوامر اللعب في القناة الرئيسية
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
                     await sleep(2000);
 
-                    // 2. إرسال أمر الحساب (الإيداع)
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
                     await sleep(2000);
 
-                    // 3. إرسال أمر ايقاف بعد الإيداع مباشرة
-                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد ايقاف');
+                    // 3. إرسال أمر ايقاف في قناة الفحص
+                    await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد ايقاف');
                 }
 
                 await sleep(61000); 
