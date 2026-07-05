@@ -8,7 +8,7 @@ const { WOLF } = wolfjs;
 // 1. الإعدادات الرئيسية الافتراضية للعب (الغرفة الرئيسية)
 const MAIN_ROOM = {
     channelId: 569,
- targetUserId: 84520028  // مرسل الكابتشا الرئيسي للعب
+    targetUserId: 84520028  // مرسل الكابتشا الرئيسي للعب
 };
 
 // 2. إعدادات الغرفة الفرعية/الثانية للعب
@@ -219,7 +219,7 @@ function createBot(config) {
         console.log(`[${botName}] ⏱️ الفحص انتهى -> دورة الفحص القادمة بعد: ${globalTimer} ثانية.`);
     }
 
-    // ================== 🎮 ACTION LOOP (الدورة الموحدة: مهام - لعب - سرقة - إيداع) ==================
+    // ================== 🎮 ACTION LOOP (الدورة الموحدة المعدلة) ==================
     async function mainActionLoop() {
         let minuteCounter = 0;
         while (true) {
@@ -227,24 +227,42 @@ function createBot(config) {
                 minuteCounter++;
 
                 if (minuteCounter === 3) {
-                    console.log(`[${botName}] 🥷 الدقيقة [3]: إرسال (مهام + سرقة + إيداع)...`);
+                    console.log(`[${botName}] 🥷 الدقيقة [3]: إرسال (تشغيل + مهام + سرقة + إيداع + ايقاف)...`);
                     
+                    // 1. إرسال أمر تشغيل قبل المهام
+                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد تشغيل');
+                    await sleep(2000);
+
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
                     await sleep(2000);
 
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد اسرق');
                     await sleep(2000);
 
+                    // 2. إرسال أمر الحساب (الإيداع)
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
+                    await sleep(2000);
+
+                    // 3. إرسال أمر ايقاف بعد الإيداع مباشرة
+                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد ايقاف');
                     
                     minuteCounter = 0; 
                 } else {
-                    console.log(`[${botName}] 🔄 الدقيقة [${minuteCounter}]: إرسال (مهام + إيداع)...`);
+                    console.log(`[${botName}] 🔄 الدقيقة [${minuteCounter}]: إرسال (تشغيل + مهام + إيداع + ايقاف)...`);
                     
+                    // 1. إرسال أمر تشغيل قبل المهام
+                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد تشغيل');
+                    await sleep(2000);
+
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
                     await sleep(2000);
 
+                    // 2. إرسال أمر الحساب (الإيداع)
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
+                    await sleep(2000);
+
+                    // 3. إرسال أمر ايقاف بعد الإيداع مباشرة
+                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد ايقاف');
                 }
 
                 await sleep(61000); 
@@ -295,7 +313,6 @@ function createBot(config) {
         console.log(`✅ الحساب [${botName}] شبك بنجاح! اللعب في [${PLAY_CHANNEL_ID}] | الفحص في [${CHECK_ROOM.channelId}]`);
         
         try {
-            // [تعديل جوهري] 1. دخول الغرف تلقائياً لضمان عدم تعليق الأوامر
             try {
                 await client.group.join(PLAY_CHANNEL_ID);
                 await client.group.join(CHECK_ROOM.channelId);
@@ -306,7 +323,6 @@ function createBot(config) {
 
             console.log(`[${botName}] 🚀 بدء تشغيل الدورات بشكل متوازٍ ومستقل...`);
             
-            // [تعديل جوهري] 2. تشغيل الدورات بدون إعاقة (Non-blocking) لكي لا يتعطل اللعب إذا علق الفحص
             mainActionLoop();
             openBoxLoop();
             checkLoop();
