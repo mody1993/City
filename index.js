@@ -35,26 +35,33 @@ function createBot(config) {
     const playCommand = config.cmd;
     let globalTimer = 300;
 
-    // دالة إرسال ذكية واستكشافية
+    // دالة إرسال استكشافية متطورة
     async function sendMessage(groupId, text) {
         try {
-            // محاولة الإرسال بجميع الطرق المحتملة
-            if (client.messaging && typeof client.messaging.sendGroupMessage === 'function') {
-                await client.messaging.sendGroupMessage(groupId, text);
-            } else if (client.messaging && typeof client.messaging.send === 'function') {
-                await client.messaging.send(groupId, text);
-            } else if (typeof client.sendGroupMessage === 'function') {
-                await client.sendGroupMessage(groupId, text);
-            } else if (client.utility && typeof client.utility.sendGroupMessage === 'function') {
+            // 1. تجربة utility
+            if (client.utility && typeof client.utility.sendGroupMessage === 'function') {
                 await client.utility.sendGroupMessage(groupId, text);
-            } else {
-                // في حال فشل الكل، نطبع محتويات الـ messaging لنعرف الصحيح
-                console.error(`[${botName}] ❌ فشل الإرسال. الدوال المتاحة في messaging هي:`);
-                if (client.messaging) console.log(Object.keys(client.messaging));
-                else console.log("client.messaging غير موجود!");
+            }
+            // 2. تجربة group
+            else if (client.group && typeof client.group.sendGroupMessage === 'function') {
+                await client.group.sendGroupMessage(groupId, text);
+            }
+            // 3. تجربة الجذر مباشرة
+            else if (typeof client.sendGroupMessage === 'function') {
+                await client.sendGroupMessage(groupId, text);
+            }
+            // 4. تجربة messaging (احتياطي)
+            else if (client.messaging && typeof client.messaging.send === 'function') {
+                await client.messaging.send(groupId, text);
+            }
+            else {
+                console.error(`[${botName}] ❌ فشل الإرسال. ابحث عن اسم دالة الإرسال في هذه القائمة:`);
+                console.log("الخصائص المتاحة في client:", Object.getOwnPropertyNames(client));
+                if(client.utility) console.log("الخصائص في utility:", Object.getOwnPropertyNames(client.utility));
+                if(client.group) console.log("الخصائص في group:", Object.getOwnPropertyNames(client.group));
             }
         } catch (e) {
-            console.error(`[${botName}] خطأ في الإرسال:`, e.message);
+            console.error(`[${botName}] خطأ أثناء الإرسال:`, e.message);
         }
     }
 
