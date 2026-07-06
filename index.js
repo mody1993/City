@@ -67,7 +67,7 @@ function createBot(config) {
     // ================== BOX PROCESSING (قناة الفحص) ==================
     async function processBox(g, s, b, points, notReady) {
         const send = async (cmd) => {
-            await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, cmd);
+            await client.messaging().sendGroupMessage(CHECK_ROOM.channelId, cmd);
             await sleep(2000); 
         };
 
@@ -98,7 +98,7 @@ function createBot(config) {
     // دالة فرعية لجلب حالة الصناديق وانتظار رد السيرفر بدقة
     async function getBoxStatus(attempt = 1) {
         return new Promise((resolve) => {
-            client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق');
+            client.messaging().sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق');
             let isResolved = false;
 
             const handler = async (message) => {
@@ -153,12 +153,12 @@ function createBot(config) {
         if (timerLine) {
             if (timerLine.includes('موقوف')) {
                 console.log(`[${botName}] 🎛️ الجهاز موقوف! إرسال أمر تشغيل...`);
-                await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
+                await client.messaging().sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
                 await sleep(3000);
                 stateChanged = true;
             } else if (timerLine.includes('غير نشط')) {
                 console.log(`[${botName}] ⏳ الجهاز غير نشط! إرسال أمر ضمان وقت...`);
-                await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
+                await client.messaging().sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
                 await sleep(3000);
                 stateChanged = true;
             }
@@ -230,39 +230,39 @@ function createBot(config) {
                     console.log(`[${botName}] 🥷 الدقيقة [3]: تشغيل (3ث) -> مهام (2ث) -> اسرق (2ث) -> إيداع (3ث) -> ايقاف...`);
                     
                     // 1. إرسال أمر تشغيل في قناة الفحص والانتظار 3 ثوانٍ
-                    await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
+                    await client.messaging().sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
                     await sleep(4000);
 
                     // 2. إرسال أوامر اللعب والسرقة في القناة الرئيسية (بانتظار ثانيتين بين كل أمر)
-                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
+                    await client.messaging().sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
                     await sleep(2000);
 
-                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد اسرق');
+                    await client.messaging().sendGroupMessage(PLAY_CHANNEL_ID, '!مد اسرق');
                     await sleep(2000);
 
-                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
+                    await client.messaging().sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
                     await sleep(4000); // الانتظار 3 ثوانٍ بعد الإيداع
 
                     // 3. إرسال أمر ايقاف في قناة الفحص
-                    await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد ايقاف');
+                    await client.messaging().sendGroupMessage(CHECK_ROOM.channelId, '!مد ايقاف');
                     
                     minuteCounter = 0; 
                 } else {
                     console.log(`[${botName}] 🔄 الدقيقة [${minuteCounter}]: تشغيل (3ث) -> مهام (2ث) -> إيداع (3ث) -> ايقاف...`);
                     
                     // 1. إرسال أمر تشغيل في قناة الفحص والانتظار 3 ثوانٍ
-                    await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
+                    await client.messaging().sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
                     await sleep(4000);
 
                     // 2. إرسال أوامر اللعب في القناة الرئيسية
-                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
+                    await client.messaging().sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
                     await sleep(2000);
 
-                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
+                    await client.messaging().sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
                     await sleep(4000); // الانتظار 3 ثوانٍ بعد الإيداع
 
                     // 3. إرسال أمر ايقاف في قناة الفحص
-                    await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد ايقاف');
+                    await client.messaging().sendGroupMessage(CHECK_ROOM.channelId, '!مد ايقاف');
                 }
 
                 await sleep(61000); 
@@ -274,12 +274,12 @@ function createBot(config) {
         }
     }
 
-    // ================== 📦 LOOP 2: FIVE MINUTE OPEN (دورة الفتح الدوري) ==================
+    // ================== 📦 LOOP 2: FIVE MINUTE OPEN (دورة الففتح الدوري) ==================
     async function openBoxLoop() {
         while (true) {
             try {
                 console.log(`[${botName}] 📦 إرسال أمر الفتح الدوري (!مد صندوق فتح) في قناة الفحص...`);
-                await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق فتح');
+                await client.messaging().sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق فتح');
                 await sleep(500000); 
             } catch (e) {
                 console.error(`[${botName}] ❌ خطأ في دورة الفتح الدوري:`, e.message);
@@ -314,8 +314,9 @@ function createBot(config) {
         
         try {
             try {
-                await client.group.join(PLAY_CHANNEL_ID);
-                await client.group.join(CHECK_ROOM.channelId);
+                // تصحيح استدعاء دوال الغرف
+                await client.group().join(PLAY_CHANNEL_ID);
+                await client.group().join(CHECK_ROOM.channelId);
                 console.log(`[${botName}] 🚪 دخل الغرف بنجاح.`);
             } catch (joinErr) {
                 console.warn(`[${botName}] ⚠️ تنبيه أثناء دخول الغرف تلقائياً:`, joinErr.message);
@@ -334,7 +335,7 @@ function createBot(config) {
             setTimeout(async () => {
                 console.log(`[${botName}] 🛑 مضت 5 ساعات و 58 دقيقة! إرسال أمر (!مد ايقاف) في قناة الفحص...`);
                 try {
-                    await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد ايقاف');
+                    await client.messaging().sendGroupMessage(CHECK_ROOM.channelId, '!مد ايقاف');
                 } catch (stopErr) {
                     console.error(`[${botName}] خطأ أثناء إرسال أمر الإيقاف:`, stopErr.message);
                 }
