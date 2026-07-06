@@ -28,6 +28,20 @@ const ACCOUNTS = [
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+// دالة مساعدة لقراءة الدوال المخفية داخل الكلاسات
+function getAllMethods(obj) {
+    if (!obj) return [];
+    let methods = new Set();
+    let current = obj;
+    while (current && current !== Object.prototype) {
+        Object.getOwnPropertyNames(current).forEach(prop => {
+            try { if (typeof obj[prop] === 'function') methods.add(prop); } catch(e){}
+        });
+        current = Object.getPrototypeOf(current);
+    }
+    return Array.from(methods);
+}
+
 function createBot(config) {
     const client = new WOLF();
     const PLAY_CHANNEL_ID = config.channelId;
@@ -35,22 +49,37 @@ function createBot(config) {
     const playCommand = config.cmd;
     let globalTimer = 300;
 
-    // دالة إرسال محدثة بناءً على المسار المكتشف في السجلات
+    // دالة إرسال خارقة تخترق الكلاسات وتجرب مسارات الـ Channel الجديدة
     async function sendMessage(groupId, text) {
         try {
-            // المحاولة الأولى: المسار الذي كشفته السجلات utility.channel
-            if (client.utility && client.utility.channel && typeof client.utility.channel.sendGroupMessage === 'function') {
-                await client.utility.channel.sendGroupMessage(groupId, text);
+            // مسار 1: التحديث الجديد للمكتبات (messaging + channelMessage)
+            if (client.messaging && typeof client.messaging.sendChannelMessage === 'function') {
+                return await client.messaging.sendChannelMessage(groupId, text);
             }
-            // المحاولة الثانية: المسار القياسي القديم
-            else if (client.messaging && typeof client.messaging.sendGroupMessage === 'function') {
-                await client.messaging.sendGroupMessage(groupId, text);
+            // مسار 2: تحديث (messaging + sendMessage)
+            if (client.messaging && typeof client.messaging.sendMessage === 'function') {
+                return await client.messaging.sendMessage(groupId, text);
             }
-            else {
-                console.error(`[${botName}] ❌ لم يتم العثور على دالة الإرسال في المسارات المعروفة.`);
+            // مسار 3: عبر كائن channel المباشر إذا كان مدعوماً
+            if (client.channel && typeof client.channel.sendMessage === 'function') {
+                return await client.channel.sendMessage(groupId, text);
             }
+            // مسار 4: عبر الـ utility المكتشف في سجلاتك
+            if (client.utility && client.utility.channel && typeof client.utility.channel.sendMessage === 'function') {
+                return await client.utility.channel.sendMessage(groupId, text);
+            }
+            // مسار 5: الاحتياطي القديم لـ group
+            if (client.messaging && typeof client.messaging.sendGroupMessage === 'function') {
+                return await client.messaging.sendGroupMessage(groupId, text);
+            }
+
+            // إذا فشلت كل المحاولات التلقائية، هنا يتدخل المستكشف لطباعة الدوال المخفية
+            console.error(`[${botName}] ❌ فشل الإرسال التلقائي. جاري استخراج الدوال المخفية...`);
+            if (client.messaging) console.log(`دوال كائن messaging المخفية:`, getAllMethods(client.messaging));
+            if (client.channel) console.log(`دوال كائن channel المخفية:`, getAllMethods(client.channel));
+            if (client.utility && client.utility.channel) console.log(`دوال كائن utility.channel المخفية:`, getAllMethods(client.utility.channel));
         } catch (e) {
-            console.error(`[${botName}] خطأ في الإرسال:`, e.message);
+            console.error(`[${botName}] خطأ غير متوقع عند محاولة الإرسال:`, e.message);
         }
     }
 
