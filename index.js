@@ -3,6 +3,15 @@ import wolfjs from 'wolf.js';
 
 const { WOLF } = wolfjs;
 
+// ================== فلتر تنظيف الكونسول ==================
+const originalLog = console.log;
+console.log = function (...args) {
+    if (typeof args[0] === 'string' && (args[0].includes('[DEBUG]') || args[0].includes('[WARN]') || args[0].includes('WARNING:'))) {
+        return; 
+    }
+    originalLog.apply(console, args);
+};
+
 // ================== الإعدادات ==================
 const MAIN_ROOM = { channelId: 569, targetUserId: 84520028 };
 const SECOND_ROOM = { channelId: 13219769, targetUserId: 76023171 };
@@ -33,9 +42,10 @@ function createBot(config) {
     const PLAY_CHANNEL_ID = config.channelId;
     const botName = config.allowedPlayers[0];
     const playCommand = config.cmd;
-    let globalTimer = 300;
+    
+    // الميقاتي سيبدأ بـ 300 كاحتياط، لكن سيتم تحديثه فوراً في التشغيل الأولي
+    let dynamicCheckTimer = 300; 
 
-    // دالة الإرسال المعتمدة والمستقرة بناءً على اختبارات النجاح
     async function sendMessage(groupId, text) {
         try {
             if (client.messaging && typeof client.messaging.sendChannelMessage === 'function') {
@@ -48,7 +58,7 @@ function createBot(config) {
                 return await client.utility.channel.sendMessage(groupId, text);
             }
         } catch (e) {
-            console.error(`[${botName}] ❌ خطأ أثناء الإرسال:`, e.message);
+            // كتم أخطاء الشبكة المؤقتة
         }
     }
 
@@ -83,45 +93,87 @@ function createBot(config) {
         });
     }
 
+    // الدالة المسؤولة عن الفحص الذكي وتحديث الميقاتي ديناميكياً
     async function sendBoxCommand() {
         const reply = await getBoxStatus();
         if (!reply) return;
-        if (reply.includes('موقوف')) await sendMessage(CHECK_ROOM.channelId, '!مد تشغيل');
-        else if (reply.includes('غير نشط')) await sendMessage(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
+
+        if (reply.includes('موقوف')) {
+            await sendMessage(CHECK_ROOM.channelId, '!مد تشغيل');
+            await sleep(2000);
+        } else if (reply.includes('غير نشط')) {
+            await sendMessage(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
+            await sleep(2000);
+        }
+
         const boxes = reply.match(/برونزي:\s*(\d+).*فضي:\s*(\d+).*ذهبي:\s*(\d+)/);
         const p = reply.match(/نقاط الضمان:\s*(\d+)\/50/);
         await processBox(boxes?.[3]||0, boxes?.[2]||0, boxes?.[1]||0, p?.[1]||0, !reply.includes('جاهز'));
+
+        // استخراج وقت الجهاز الزمني المتبقي
+        const timeMatch = reply.match(/(?:المتبقي|ينتهي|الوقت|وقت):\s*(\d+)(?:\s*:\s*(\d+))?/i);
+        if (timeMatch) {
+            const mins = parseInt(timeMatch[1], 10);
+            const secs = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
+            // ضبط النومة القادمة لتنتهي مع انتهاء الجهاز تماماً (+ 5 ثوانٍ أمان)
+            dynamicCheckTimer = (mins * 60) + secs + 5;
+            if (dynamicCheckTimer < 30) dynamicCheckTimer = 300; 
+        } else {
+            dynamicCheckTimer = 300; 
+        }
     }
 
+    // 2️⃣ دورة اللعب الأساسية
     async function mainActionLoop() {
-        let min = 0;
+        let minuteCounter = 0;
         while (true) {
-            min++;
-            await sendMessage(PLAY_CHANNEL_ID, '!مد مهام'); await sleep(2000);
-            if (min === 3) { await sendMessage(PLAY_CHANNEL_ID, '!مد اسرق'); await sleep(2000); min = 0; }
+            minuteCounter++;
+            await sendMessage(PLAY_CHANNEL_ID, '!مد مهام'); 
+            await sleep(2000);
+
+            if (minuteCounter === 3) { 
+                await sendMessage(PLAY_CHANNEL_ID, '!مد اسرق'); 
+                await sleep(2000); 
+                minuteCounter = 0; 
+            }
+
             await sendMessage(PLAY_CHANNEL_ID, playCommand);
             await sleep(61000);
         }
     }
 
+    // 3️⃣ دورة الفتح الدوري (كل 500 ثانية)
     async function openBoxLoop() {
         while (true) {
+            await sleep(500000); 
             await sendMessage(CHECK_ROOM.channelId, '!مد صندوق فتح');
-            await sleep(500000);
         }
     }
 
+    // 4️⃣ دورة الفحص الذكي (تنام بناءً على القيمة المحددة من الفحص الأخير)
     async function checkLoop() {
         while (true) {
-            await sleep(globalTimer * 1000);
+            await sleep(dynamicCheckTimer * 1000);
             await sendBoxCommand();
         }
     }
 
-    client.on('ready', () => {
-        console.log(`✅ ${botName} متصل بنجاح وبدأ العمل.`);
-        mainActionLoop(); openBoxLoop(); checkLoop();
-        setTimeout(async () => await sendMessage(CHECK_ROOM.channelId, '!مد ايقاف'), 21480000);
+    // ربط خط السير بحدث الجاهزية والاستعداد
+    client.on('ready', async () => {
+        originalLog(`✅ [${botName}] متصل بنجاح وبدأ المسار الزمني المعياري.`);
+
+        // 1️⃣ رحلة التشغيل الأولي: تفحص فوراً وتضبط قيمة dynamicCheckTimer الحقيقية
+        await sendBoxCommand();
+
+        // إطلاق الدورات المتوازية (الآن checkLoop ستنام بالوقت الدقيق المستخرج للتو)
+        mainActionLoop(); 
+        openBoxLoop(); 
+        checkLoop();
+
+        // 5️⃣ مرحلة الإغلاق النهائي (تغلق وتوقف كل شيء بعد 5 ساعات و 58 دقيقة تلقائياً)
+        setTimeout(async () => {
+            await sendMessage(CHECK_ROOM.channelId, '!مد ايقاف');
+        }, 21480000);
     });
 
     client.login(config.email, config.password);
