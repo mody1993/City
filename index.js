@@ -215,7 +215,7 @@ function createBot(config) {
         console.log(`[${botName}] ⏱️ الفحص انتهى -> دورة الفحص القادمة بعد: ${globalTimer} ثانية.`);
     }
 
-    // ================== 🎮 ACTION LOOP (الدورة الموحدة بالتواقيت الفريش) ==================
+   // ================== 🎮 ACTION LOOP (الدورة الموحدة بالتواقيت الفريش) ==================
     async function mainActionLoop() {
         let minuteCounter = 0;
         while (true) {
@@ -223,10 +223,10 @@ function createBot(config) {
                 minuteCounter++;
 
                 if (minuteCounter === 3) {
-                    console.log(`[${botName}] 🥷 الدقيقة [3]: تشغيل (3ث) -> مهام (2ث) -> اسرق (2ث) -> إيداع (3ث) -> ايقاف...`);
+                    console.log(`[${botName}] 🥷 الدقيقة [3]: تشغيل (5ث) -> مهام (2ث) -> اسرق (2ث) -> إيداع (5ث) -> ايقاف...`);
                     
                     await client.messaging.sendChannelMessage(CHECK_ROOM.channelId, '!مد تشغيل');
-                    await sleep(3000);
+                    await sleep(5000); // ⏱️ انتظار 5 ثواني بعد التشغيل
 
                     await client.messaging.sendChannelMessage(PLAY_CHANNEL_ID, '!مد مهام');
                     await sleep(2000);
@@ -235,22 +235,22 @@ function createBot(config) {
                     await sleep(2000);
 
                     await client.messaging.sendChannelMessage(PLAY_CHANNEL_ID, playCommand);
-                    await sleep(3000); 
+                    await sleep(5000); // ⏱️ انتظار 5 ثواني بعد الإيداع
 
                     await client.messaging.sendChannelMessage(CHECK_ROOM.channelId, '!مد ايقاف');
                     
                     minuteCounter = 0; 
                 } else {
-                    console.log(`[${botName}] 🔄 الدقيقة [${minuteCounter}]: تشغيل (3ث) -> مهام (2ث) -> إيداع (3ث) -> ايقاف...`);
+                    console.log(`[${botName}] 🔄 الدقيقة [${minuteCounter}]: تشغيل (5ث) -> مهام (2ث) -> إيداع (5ث) -> ايقاف...`);
                     
                     await client.messaging.sendChannelMessage(CHECK_ROOM.channelId, '!مد تشغيل');
-                    await sleep(3000);
+                    await sleep(5000); // ⏱️ انتظار 5 ثواني بعد التشغيل
 
                     await client.messaging.sendChannelMessage(PLAY_CHANNEL_ID, '!مد مهام');
                     await sleep(2000);
 
                     await client.messaging.sendChannelMessage(PLAY_CHANNEL_ID, playCommand);
-                    await sleep(3000); 
+                    await sleep(5000); // ⏱️ انتظار 5 ثواني بعد الإيداع
 
                     await client.messaging.sendChannelMessage(CHECK_ROOM.channelId, '!مد ايقاف');
                 }
