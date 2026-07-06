@@ -55,7 +55,7 @@ function createBot(config) {
     // ================== BOX PROCESSING ==================
     async function processBox(g, s, b, points, notReady) {
         const send = async (cmd) => {
-            await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, cmd);
+            await client.messaging.sendMessage(CHECK_ROOM.channelId, cmd);
             await sleep(2000); 
         };
 
@@ -77,7 +77,7 @@ function createBot(config) {
 
     async function getBoxStatus(attempt = 1) {
         return new Promise((resolve) => {
-            client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق');
+            client.messaging.sendMessage(CHECK_ROOM.channelId, '!مد صندوق');
             let isResolved = false;
 
             const handler = async (message) => {
@@ -131,12 +131,12 @@ function createBot(config) {
         if (timerLine) {
             if (timerLine.includes('موقوف')) {
                 console.log(`[${botName}] 🎛️ الجهاز موقوف! إرسال أمر تشغيل...`);
-                await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
+                await client.messaging.sendMessage(CHECK_ROOM.channelId, '!مد تشغيل');
                 await sleep(3000);
                 stateChanged = true;
             } else if (timerLine.includes('غير نشط')) {
                 console.log(`[${botName}] ⏳ الجهاز غير نشط! إرسال أمر ضمان وقت...`);
-                await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
+                await client.messaging.sendMessage(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
                 await sleep(3000);
                 stateChanged = true;
             }
@@ -201,17 +201,17 @@ function createBot(config) {
 
                 if (minuteCounter === 3) {
                     console.log(`[${botName}] 🥷 الدقيقة [3]: (مهام + سرقة + إيداع)...`);
-                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
+                    await client.messaging.sendMessage(PLAY_CHANNEL_ID, '!مد مهام');
                     await sleep(2000);
-                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد اسرق');
+                    await client.messaging.sendMessage(PLAY_CHANNEL_ID, '!مد اسرق');
                     await sleep(2000);
-                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
+                    await client.messaging.sendMessage(PLAY_CHANNEL_ID, playCommand);
                     minuteCounter = 0; 
                 } else {
                     console.log(`[${botName}] 🔄 الدقيقة [${minuteCounter}]: (مهام + إيداع)...`);
-                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
+                    await client.messaging.sendMessage(PLAY_CHANNEL_ID, '!مد مهام');
                     await sleep(2000);
-                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
+                    await client.messaging.sendMessage(PLAY_CHANNEL_ID, playCommand);
                 }
 
                 await sleep(61000); 
@@ -229,7 +229,7 @@ function createBot(config) {
             try {
                 await sleep(500000); 
                 console.log(`[${botName}] 📦 الفتح الدوري (!مد صندوق فتح)...`);
-                await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق فتح');
+                await client.messaging.sendMessage(CHECK_ROOM.channelId, '!مد صندوق فتح');
             } catch (e) {
                 await sleep(5000);
             }
@@ -274,7 +274,7 @@ function createBot(config) {
             setTimeout(async () => {
                 console.log(`[${botName}] 🛑 مضت 5 ساعات و 58 دقيقة! جاري الإيقاف...`);
                 try {
-                    await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد ايقاف');
+                    await client.messaging.sendMessage(CHECK_ROOM.channelId, '!مد ايقاف');
                     await sleep(2000);
                     await client.logout(); // فصل الحساب نهائياً
                 } catch (stopErr) {}
