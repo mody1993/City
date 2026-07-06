@@ -1,12 +1,19 @@
 import 'dotenv/config';
 import wolfjs from 'wolf.js';
+import sharp from 'sharp';
+import { createWorker } from 'tesseract.js';
+import fetch from 'node-fetch';
 
 const { WOLF } = wolfjs;
 
-// ================== الإعدادات ==================
+// ================== 1. لوحة التحكم والإعدادات ==================
 const MAIN_ROOM = { channelId: 569, targetUserId: 84520028 };
+const SECOND_ROOM = { channelId: 13219769, targetUserId: 76023171 };
 const CHECK_ROOM = { channelId: 18654218, targetUserId: 76023242 };
+const SPECIAL_ROOM_USERS = [];
+const specialUsersSet = new Set(SPECIAL_ROOM_USERS);
 
+// مصفوفة الحسابات كاملة
 const ACCOUNTS = [
     { email: process.env.U_MAIL_1,  password: process.env.U_PASS_1,  allowedPlayers: ['King'],    cmd: '!مد تحالف ايداع كل' },
     { email: process.env.U_MAIL_2,  password: process.env.U_PASS_2,  allowedPlayers: ['KSA'],     cmd: '!مد تحالف ايداع كل' },
@@ -25,80 +32,86 @@ const ACCOUNTS = [
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+// ================== 2. المصنع البرمجي (Bot Factory) ==================
 function createBot(config) {
     const client = new WOLF();
+    const PLAY_CHANNEL_ID = config.channelId;
     const botName = config.allowedPlayers[0];
-    const PLAY_CHANNEL_ID = MAIN_ROOM.channelId;
-    let sendFn = null; // سيتم تحديدها لاحقاً
+    const playCommand = config.cmd;
 
-    // وظيفة لاكتشاف دالة الإرسال الصحيحة في نسختك من المكتبة
-    function findSendMethod() {
-        if (typeof client.sendGroupMessage === 'function') return client.sendGroupMessage.bind(client);
-        if (client.group && typeof client.group.send === 'function') return client.group.send.bind(client.group);
-        if (client.messaging && typeof client.messaging.sendGroupMessage === 'function') return client.messaging.sendGroupMessage.bind(client.messaging);
-        if (client.messaging && typeof client.messaging.sendMessage === 'function') return client.messaging.sendMessage.bind(client.messaging);
-        return null;
+    // --- منطق الكابتشا الأصلي (تم الحفاظ عليه بالكامل) ---
+    async function isCaptchaByColor(buffer) {
+        const { data, info } = await sharp(buffer).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
+        let redPixels = 0;
+        const totalPixels = info.width * info.height;
+        for (let i = 0; i < data.length; i += 4) {
+            if (data[i] > 120 && data[i] > (data[i + 1] + 30) && data[i] > (data[i + 2] + 30)) redPixels++;
+        }
+        return (redPixels / totalPixels) * 100 > 40;
     }
 
-    async function send(groupId, msg) {
-        if (!sendFn) sendFn = findSendMethod();
-        if (!sendFn) {
-            console.log(`[${botName}] ❌ خطأ فادح: لم يتم العثور على دالة إرسال!`);
-            return;
-        }
-        try {
-            await sendFn(groupId, msg);
-            console.log(`[${botName}] ✅ أرسل: ${msg}`);
-        } catch (e) {
-            console.log(`[${botName}] ⚠️ فشل الإرسال: ${e.message}`);
-        }
-    }
-
-    async function getBoxStatus() {
-        return new Promise((resolve) => {
-            send(CHECK_ROOM.channelId, '!مد صندوق');
-            const handler = (m) => {
-                if (m.sourceSubscriberId === CHECK_ROOM.targetUserId && m.body?.includes('حالة الصناديق')) {
-                    client.removeListener('groupMessage', handler);
-                    resolve(m.body);
+    async function solveCaptcha(buffer) {
+        const { data, info } = await sharp(buffer).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
+        let minX = info.width, minY = info.height, maxX = 0, maxY = 0, found = false;
+        for (let y = 0; y < info.height; y++) {
+            for (let x = 0; x < info.width; x++) {
+                const idx = (y * info.width + x) * 4;
+                if (data[idx] > 200 && data[idx + 1] > 200 && data[idx + 2] < 100) {
+                    minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+                    found = true;
                 }
-            };
-            client.on('groupMessage', handler);
-            setTimeout(() => { client.removeListener('groupMessage', handler); resolve(null); }, 10000);
-        });
+            }
+        }
+        if (!found) return null;
+        const processedBuffer = await sharp(buffer).extract({ left: minX + 10, top: minY + 10, width: (maxX - minX) - 20, height: (maxY - minY) - 20 }).greyscale().normalize().linear(1.5, -0.2).sharpen().toBuffer();
+        const worker = await createWorker('eng+ara');
+        await worker.setParameters({ tessedit_pageseg_mode: '7' });
+        const { data: { text } } = await worker.recognize(processedBuffer);
+        await worker.terminate();
+        return text.replace(/[^a-zA-Z0-9\u0621-\u064A]/g, '');
     }
+
+    // --- دورات العمل المدمجة ---
+    async function mainActionLoop() {
+        let minuteCounter = 0;
+        while (true) {
+            try {
+                minuteCounter++;
+                await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
+                await sleep(2000);
+                if (minuteCounter === 3) {
+                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد اسرق');
+                    await sleep(2000);
+                    minuteCounter = 0;
+                }
+                await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
+                await sleep(61000);
+            } catch (e) { await sleep(5000); }
+        }
+    }
+
+    client.on('groupMessage', async (message) => {
+        // مراقبة الكابتشا الأصلية
+        if (message.sourceSubscriberId == 76023604 && message.targetGroupId == PLAY_CHANNEL_ID && message.type === 'text/image_link') {
+            const response = await fetch(message.body);
+            const buffer = Buffer.from(await response.arrayBuffer());
+            if (await isCaptchaByColor(buffer)) {
+                const code = await solveCaptcha(buffer);
+                if (code) await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, "#" + code);
+            }
+        }
+    });
 
     client.on('ready', async () => {
-        console.log(`✅ الحساب [${botName}] متصل وجاهز.`);
-        
-        // الانضمام للغرف
-        if (client.group && client.group.join) {
-            await client.group.join(PLAY_CHANNEL_ID);
-            await client.group.join(CHECK_ROOM.channelId);
-        }
-
-        // حلقة المهام الدورية
-        setInterval(async () => {
-            await send(PLAY_CHANNEL_ID, '!مد مهام');
-            await sleep(2000);
-            await send(PLAY_CHANNEL_ID, config.cmd);
-        }, 65000);
-
-        // حلقة فحص الصناديق
-        while (true) {
-            const status = await getBoxStatus();
-            if (status?.includes('موقوف')) await send(CHECK_ROOM.channelId, '!مد تشغيل');
-            else if (status?.includes('غير نشط')) await send(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
-            await sleep(300000); // فحص كل 5 دقائق
-        }
+        console.log(`✅ الحساب [${botName}] شبك بنجاح في [${PLAY_CHANNEL_ID}]`);
+        mainActionLoop();
     });
 
     client.login(config.email, config.password);
 }
 
-// تشغيل البوتات
+// ================== 3. التشغيل ==================
 ACCOUNTS.forEach((acc, i) => {
-    if (acc.email) { // تأكد من وجود إيميل
-        setTimeout(() => createBot(acc), i * 15000);
-    }
+    const roomSettings = specialUsersSet.has(acc.allowedPlayers[0]) ? SECOND_ROOM : MAIN_ROOM;
+    setTimeout(() => createBot({ ...acc, ...roomSettings }), i * 15000);
 });
