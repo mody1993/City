@@ -35,19 +35,23 @@ function createBot(config) {
     const playCommand = config.cmd;
     let globalTimer = 300;
 
-    // دالة إرسال مصححة لاستهداف الهيكل المباشر للمكتبة
+    // دالة إرسال ذكية واستكشافية
     async function sendMessage(groupId, text) {
         try {
-            // المحاولة الأولى: عبر client.messaging مباشرة
+            // محاولة الإرسال بجميع الطرق المحتملة
             if (client.messaging && typeof client.messaging.sendGroupMessage === 'function') {
                 await client.messaging.sendGroupMessage(groupId, text);
-            } 
-            // المحاولة الثانية: عبر client مباشرة (في حال كانت المكتبة تدعمها)
-            else if (typeof client.sendGroupMessage === 'function') {
+            } else if (client.messaging && typeof client.messaging.send === 'function') {
+                await client.messaging.send(groupId, text);
+            } else if (typeof client.sendGroupMessage === 'function') {
                 await client.sendGroupMessage(groupId, text);
-            }
-            else {
-                console.error(`[${botName}] ❌ لم يتم العثور على دالة إرسال صالحة.`);
+            } else if (client.utility && typeof client.utility.sendGroupMessage === 'function') {
+                await client.utility.sendGroupMessage(groupId, text);
+            } else {
+                // في حال فشل الكل، نطبع محتويات الـ messaging لنعرف الصحيح
+                console.error(`[${botName}] ❌ فشل الإرسال. الدوال المتاحة في messaging هي:`);
+                if (client.messaging) console.log(Object.keys(client.messaging));
+                else console.log("client.messaging غير موجود!");
             }
         } catch (e) {
             console.error(`[${botName}] خطأ في الإرسال:`, e.message);
@@ -101,7 +105,7 @@ function createBot(config) {
             min++;
             await sendMessage(PLAY_CHANNEL_ID, '!مد مهام'); await sleep(2000);
             if (min === 3) { await sendMessage(PLAY_CHANNEL_ID, '!مد اسرق'); await sleep(2000); min = 0; }
-            await sendMessage(PLAY_CHANNEL_ID, playCommand); // <-- هذا هو الأمر المطلوب
+            await sendMessage(PLAY_CHANNEL_ID, playCommand);
             await sleep(61000);
         }
     }
