@@ -5,7 +5,6 @@ const { WOLF } = wolfjs;
 
 // ================== الإعدادات ==================
 const MAIN_ROOM = { channelId: 569, targetUserId: 84520028 };
-const SECOND_ROOM = { channelId: 13219769, targetUserId: 76023171 };
 const CHECK_ROOM = { channelId: 18654218, targetUserId: 76023242 };
 
 const ACCOUNTS = [
@@ -29,19 +28,33 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 function createBot(config) {
     const client = new WOLF();
     const botName = config.allowedPlayers[0];
-    const PLAY_CHANNEL_ID = config.channelId;
-    let globalTimer = 300;
+    const PLAY_CHANNEL_ID = MAIN_ROOM.channelId;
+    let sendFn = null; // سيتم تحديدها لاحقاً
 
-    // دالة إرسال ذكية تكتشف المسار المتاح في مكتبتك
-    async function send(groupId, msg) {
-        try {
-            if (typeof client.sendGroupMessage === 'function') await client.sendGroupMessage(groupId, msg);
-            else if (client.group && typeof client.group.send === 'function') await client.group.send(groupId, msg);
-            else if (client.messaging && typeof client.messaging.sendGroupMessage === 'function') await client.messaging.sendGroupMessage(groupId, msg);
-        } catch (e) { console.log(`[${botName}] خطأ إرسال: ${e.message}`); }
+    // وظيفة لاكتشاف دالة الإرسال الصحيحة في نسختك من المكتبة
+    function findSendMethod() {
+        if (typeof client.sendGroupMessage === 'function') return client.sendGroupMessage.bind(client);
+        if (client.group && typeof client.group.send === 'function') return client.group.send.bind(client.group);
+        if (client.messaging && typeof client.messaging.sendGroupMessage === 'function') return client.messaging.sendGroupMessage.bind(client.messaging);
+        if (client.messaging && typeof client.messaging.sendMessage === 'function') return client.messaging.sendMessage.bind(client.messaging);
+        return null;
     }
 
-    async function getBoxStatus(attempt = 1) {
+    async function send(groupId, msg) {
+        if (!sendFn) sendFn = findSendMethod();
+        if (!sendFn) {
+            console.log(`[${botName}] ❌ خطأ فادح: لم يتم العثور على دالة إرسال!`);
+            return;
+        }
+        try {
+            await sendFn(groupId, msg);
+            console.log(`[${botName}] ✅ أرسل: ${msg}`);
+        } catch (e) {
+            console.log(`[${botName}] ⚠️ فشل الإرسال: ${e.message}`);
+        }
+    }
+
+    async function getBoxStatus() {
         return new Promise((resolve) => {
             send(CHECK_ROOM.channelId, '!مد صندوق');
             const handler = (m) => {
@@ -51,33 +64,32 @@ function createBot(config) {
                 }
             };
             client.on('groupMessage', handler);
-            setTimeout(() => { client.removeListener('groupMessage', handler); resolve(null); }, 8000);
+            setTimeout(() => { client.removeListener('groupMessage', handler); resolve(null); }, 10000);
         });
     }
 
     client.on('ready', async () => {
-        console.log(`✅ الحساب [${botName}] متصل.`);
-        // محاولة الانضمام للغرف
+        console.log(`✅ الحساب [${botName}] متصل وجاهز.`);
+        
+        // الانضمام للغرف
         if (client.group && client.group.join) {
             await client.group.join(PLAY_CHANNEL_ID);
             await client.group.join(CHECK_ROOM.channelId);
         }
 
-        // حلقة المهام
+        // حلقة المهام الدورية
         setInterval(async () => {
             await send(PLAY_CHANNEL_ID, '!مد مهام');
             await sleep(2000);
             await send(PLAY_CHANNEL_ID, config.cmd);
         }, 65000);
 
-        // حلقة الفحص
+        // حلقة فحص الصناديق
         while (true) {
             const status = await getBoxStatus();
-            if (status) {
-                if (status.includes('موقوف')) await send(CHECK_ROOM.channelId, '!مد تشغيل');
-                else if (status.includes('غير نشط')) await send(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
-            }
-            await sleep(globalTimer * 1000);
+            if (status?.includes('موقوف')) await send(CHECK_ROOM.channelId, '!مد تشغيل');
+            else if (status?.includes('غير نشط')) await send(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
+            await sleep(300000); // فحص كل 5 دقائق
         }
     });
 
@@ -86,5 +98,7 @@ function createBot(config) {
 
 // تشغيل البوتات
 ACCOUNTS.forEach((acc, i) => {
-    setTimeout(() => createBot(acc), i * 15000);
+    if (acc.email) { // تأكد من وجود إيميل
+        setTimeout(() => createBot(acc), i * 15000);
+    }
 });
