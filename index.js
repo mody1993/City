@@ -35,15 +35,23 @@ function createBot(config) {
     const playCommand = config.cmd;
     let globalTimer = 300;
 
-    // دالة إرسال ذكية تتخطى خطأ عدم وجود الوظيفة
+    // دالة إرسال مصححة لاستهداف الهيكل المباشر للمكتبة
     async function sendMessage(groupId, text) {
         try {
-            if (client.messaging?.sendGroupMessage) await client.messaging.sendGroupMessage(groupId, text);
-            else if (client.sendGroupMessage) await client.sendGroupMessage(groupId, text);
-            else if (client.utility?.sendGroupMessage) await client.utility.sendGroupMessage(groupId, text);
-            else if (client.chat?.sendGroupMessage) await client.chat.sendGroupMessage(groupId, text);
-            else console.error(`[${botName}] ❌ فشل العثور على دالة الإرسال!`);
-        } catch (e) { console.error(`[${botName}] خطأ في الإرسال:`, e.message); }
+            // المحاولة الأولى: عبر client.messaging مباشرة
+            if (client.messaging && typeof client.messaging.sendGroupMessage === 'function') {
+                await client.messaging.sendGroupMessage(groupId, text);
+            } 
+            // المحاولة الثانية: عبر client مباشرة (في حال كانت المكتبة تدعمها)
+            else if (typeof client.sendGroupMessage === 'function') {
+                await client.sendGroupMessage(groupId, text);
+            }
+            else {
+                console.error(`[${botName}] ❌ لم يتم العثور على دالة إرسال صالحة.`);
+            }
+        } catch (e) {
+            console.error(`[${botName}] خطأ في الإرسال:`, e.message);
+        }
     }
 
     async function processBox(g, s, b, points, notReady) {
@@ -80,7 +88,6 @@ function createBot(config) {
     async function sendBoxCommand() {
         const reply = await getBoxStatus();
         if (!reply) return;
-        // منطق التحليل المطور
         if (reply.includes('موقوف')) await sendMessage(CHECK_ROOM.channelId, '!مد تشغيل');
         else if (reply.includes('غير نشط')) await sendMessage(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
         const boxes = reply.match(/برونزي:\s*(\d+).*فضي:\s*(\d+).*ذهبي:\s*(\d+)/);
@@ -94,7 +101,7 @@ function createBot(config) {
             min++;
             await sendMessage(PLAY_CHANNEL_ID, '!مد مهام'); await sleep(2000);
             if (min === 3) { await sendMessage(PLAY_CHANNEL_ID, '!مد اسرق'); await sleep(2000); min = 0; }
-            await sendMessage(PLAY_CHANNEL_ID, playCommand);
+            await sendMessage(PLAY_CHANNEL_ID, playCommand); // <-- هذا هو الأمر المطلوب
             await sleep(61000);
         }
     }
@@ -114,7 +121,7 @@ function createBot(config) {
     }
 
     client.on('ready', () => {
-        console.log(`✅ ${botName} متصل.`);
+        console.log(`✅ ${botName} متصل بنجاح.`);
         mainActionLoop(); openBoxLoop(); checkLoop();
         setTimeout(async () => await sendMessage(CHECK_ROOM.channelId, '!مد ايقاف'), 21480000);
     });
