@@ -2,11 +2,12 @@ import 'dotenv/config';
 import wolfjs from 'wolf.js';
 const { WOLF } = wolfjs;
 
-// إعدادات الغرف
+// إعدادات الغرف وهوية البوت المصدري
 const MAIN_ROOM_ID = 569;
 const CHECK_ROOM_ID = 18654218;
+const BOT_SOURCE_ID = 76023604; // رقم ID البوت الذي تستقبل منه الرسائل
 
-// تصفية الكونسول (إخفاء السطور المزعجة)
+// تصفية الكونسول
 process.env.SUPPRESS_NO_CONFIG_WARNING = 'true';
 console.log = (...args) => process.stdout.write(args.join(' ') + '\n');
 console.debug = () => {}; 
@@ -59,7 +60,7 @@ async function runBot(acc) {
             await client.messaging.sendGroupMessage(CHECK_ROOM_ID, '!مد صندوق فتح');
         }, 500000);
 
-        // 4. الفحص الذكي
+        // 4. الفحص الذكي (مع شرط هوية البوت)
         async function smartCheck() {
             while (true) {
                 await sleep(dynamicCheckTimer);
@@ -69,11 +70,15 @@ async function runBot(acc) {
         smartCheck();
 
         client.on('groupMessage', async (msg) => {
-            if (msg.targetGroupId === CHECK_ROOM_ID && msg.body.includes('📦')) {
+            // التحقق من هوية البوت والقناة
+            if (msg.targetGroupId === CHECK_ROOM_ID && msg.sourceSubscriberId === BOT_SOURCE_ID && msg.body.includes('📦')) {
                 const body = msg.body;
+                
+                // التشغيل والنشاط
                 if (body.includes('موقوف')) await client.messaging.sendGroupMessage(CHECK_ROOM_ID, '!مد تشغيل');
                 if (body.includes('غير نشط')) await client.messaging.sendGroupMessage(CHECK_ROOM_ID, '!مد صندوق ضمان وقت');
                 
+                // الموازنة
                 const points = (body.match(/نقاط الضمان: (\d+)\//) || [])[1] || 0;
                 if (parseInt(points) < 42) {
                     if (body.includes('ذهبي: [1-9]')) await client.messaging.sendGroupMessage(CHECK_ROOM_ID, '!مد صندوق فتح ذهبي');
@@ -81,6 +86,7 @@ async function runBot(acc) {
                     else if (body.includes('برونزي: [1-9]')) await client.messaging.sendGroupMessage(CHECK_ROOM_ID, '!مد صندوق فتح برونزي');
                 }
 
+                // التوقيت الذكي
                 const timeMatch = body.match(/(\d+)س (\d+)د/);
                 if (timeMatch) dynamicCheckTimer = (parseInt(timeMatch[1]) * 3600000) + (parseInt(timeMatch[2]) * 60000) + 5000;
             }
@@ -99,5 +105,5 @@ async function runBot(acc) {
     await client.login(acc.email, acc.password);
 }
 
-// التشغيل التتابعي
+// التشغيل التتابعي (15 ثانية لكل بوت)
 ACCOUNTS.forEach((acc, i) => setTimeout(() => runBot(acc), i * 15000));
