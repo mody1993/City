@@ -6,14 +6,13 @@ import fetch from 'node-fetch';
 
 const { WOLF } = wolfjs;
 
-// ================== 1. لوحة التحكم والإعدادات ==================
+// إعدادات الغرف
 const MAIN_ROOM = { channelId: 569, targetUserId: 84520028 };
 const SECOND_ROOM = { channelId: 13219769, targetUserId: 76023171 };
 const CHECK_ROOM = { channelId: 18654218, targetUserId: 76023242 };
 const SPECIAL_ROOM_USERS = [];
 const specialUsersSet = new Set(SPECIAL_ROOM_USERS);
 
-// مصفوفة الحسابات كاملة
 const ACCOUNTS = [
     { email: process.env.U_MAIL_1,  password: process.env.U_PASS_1,  allowedPlayers: ['King'],    cmd: '!مد تحالف ايداع كل' },
     { email: process.env.U_MAIL_2,  password: process.env.U_PASS_2,  allowedPlayers: ['KSA'],     cmd: '!مد تحالف ايداع كل' },
@@ -32,86 +31,59 @@ const ACCOUNTS = [
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// ================== 2. المصنع البرمجي (Bot Factory) ==================
 function createBot(config) {
     const client = new WOLF();
-    const PLAY_CHANNEL_ID = config.channelId;
-    const botName = config.allowedPlayers[0];
-    const playCommand = config.cmd;
+    let cachedSend = null;
 
-    // --- منطق الكابتشا الأصلي (تم الحفاظ عليه بالكامل) ---
-    async function isCaptchaByColor(buffer) {
-        const { data, info } = await sharp(buffer).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
-        let redPixels = 0;
-        const totalPixels = info.width * info.height;
-        for (let i = 0; i < data.length; i += 4) {
-            if (data[i] > 120 && data[i] > (data[i + 1] + 30) && data[i] > (data[i + 2] + 30)) redPixels++;
-        }
-        return (redPixels / totalPixels) * 100 > 40;
-    }
-
-    async function solveCaptcha(buffer) {
-        const { data, info } = await sharp(buffer).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
-        let minX = info.width, minY = info.height, maxX = 0, maxY = 0, found = false;
-        for (let y = 0; y < info.height; y++) {
-            for (let x = 0; x < info.width; x++) {
-                const idx = (y * info.width + x) * 4;
-                if (data[idx] > 200 && data[idx + 1] > 200 && data[idx + 2] < 100) {
-                    minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
-                    found = true;
-                }
+    // --- نظام البحث الذكي عن دالة الإرسال (مستخلص من كودك الأول الناجح) ---
+    function resolveSendMethod() {
+        if (cachedSend) return cachedSend;
+        const candidates = ['sendChannelMessage', 'sendGroupMessage', 'send', 'sendMessage'];
+        for (let name of candidates) {
+            if (typeof client.messaging[name] === 'function') {
+                cachedSend = client.messaging[name].bind(client.messaging);
+                return cachedSend;
             }
         }
-        if (!found) return null;
-        const processedBuffer = await sharp(buffer).extract({ left: minX + 10, top: minY + 10, width: (maxX - minX) - 20, height: (maxY - minY) - 20 }).greyscale().normalize().linear(1.5, -0.2).sharpen().toBuffer();
-        const worker = await createWorker('eng+ara');
-        await worker.setParameters({ tessedit_pageseg_mode: '7' });
-        const { data: { text } } = await worker.recognize(processedBuffer);
-        await worker.terminate();
-        return text.replace(/[^a-zA-Z0-9\u0621-\u064A]/g, '');
+        return null;
     }
 
-    // --- دورات العمل المدمجة ---
-    async function mainActionLoop() {
-        let minuteCounter = 0;
+    async function safeSend(id, msg) {
+        const method = resolveSendMethod();
+        if (method) {
+            try { return await method(id, msg); } catch (e) { console.error("خطأ إرسال:", e.message); }
+        }
+    }
+
+    // --- منطق المهام ---
+    async function startTasks() {
+        let count = 0;
         while (true) {
-            try {
-                minuteCounter++;
-                await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
-                await sleep(2000);
-                if (minuteCounter === 3) {
-                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد اسرق');
-                    await sleep(2000);
-                    minuteCounter = 0;
-                }
-                await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
-                await sleep(61000);
-            } catch (e) { await sleep(5000); }
+            count++;
+            console.log(`[${config.allowedPlayers[0]}] إرسال الأوامر...`);
+            await safeSend(config.channelId, '!مد مهام');
+            await sleep(3000);
+            if (count === 3) {
+                await safeSend(config.channelId, '!مد اسرق');
+                await sleep(3000);
+                count = 0;
+            }
+            await safeSend(config.channelId, config.cmd);
+            await sleep(65000);
         }
     }
-
-    client.on('groupMessage', async (message) => {
-        // مراقبة الكابتشا الأصلية
-        if (message.sourceSubscriberId == 76023604 && message.targetGroupId == PLAY_CHANNEL_ID && message.type === 'text/image_link') {
-            const response = await fetch(message.body);
-            const buffer = Buffer.from(await response.arrayBuffer());
-            if (await isCaptchaByColor(buffer)) {
-                const code = await solveCaptcha(buffer);
-                if (code) await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, "#" + code);
-            }
-        }
-    });
 
     client.on('ready', async () => {
-        console.log(`✅ الحساب [${botName}] شبك بنجاح في [${PLAY_CHANNEL_ID}]`);
-        mainActionLoop();
+        console.log(`✅ ${config.allowedPlayers[0]} متصل!`);
+        await sleep(10000); // انتظار 10 ثوانٍ لضمان استقرار الاتصال قبل بدء المهام
+        startTasks();
     });
 
     client.login(config.email, config.password);
 }
 
-// ================== 3. التشغيل ==================
+// تشغيل الحسابات بفاصل زمني كبير
 ACCOUNTS.forEach((acc, i) => {
-    const roomSettings = specialUsersSet.has(acc.allowedPlayers[0]) ? SECOND_ROOM : MAIN_ROOM;
-    setTimeout(() => createBot({ ...acc, ...roomSettings }), i * 15000);
+    const room = specialUsersSet.has(acc.allowedPlayers[0]) ? SECOND_ROOM : MAIN_ROOM;
+    setTimeout(() => createBot({ ...acc, ...room }), i * 20000);
 });
