@@ -7,8 +7,8 @@ const { WOLF } = wolfjs;
 
 // 1. الإعدادات الرئيسية الافتراضية للعب (الغرفة الرئيسية)
 const MAIN_ROOM = {
-    channelId:13219769,
- targetUserId:76023171  // مرسل الكابتشا الرئيسي للعب
+    channelId: 569,
+    targetUserId: 84520028  // مرسل الكابتشا الرئيسي للعب
 };
 
 // 2. إعدادات الغرفة الفرعية/الثانية للعب
@@ -252,14 +252,14 @@ function createBot(config) {
                     
                     // 1. إرسال أمر تشغيل في قناة الفحص والانتظار 3 ثوانٍ
                     await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
-                    await sleep(3000);
+                    await sleep(4000);
 
                     // 2. إرسال أوامر اللعب في القناة الرئيسية
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
                     await sleep(2000);
 
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
-                    await sleep(3000); // الانتظار 3 ثوانٍ بعد الإيداع
+                    await sleep(4000); // الانتظار 3 ثوانٍ بعد الإيداع
 
                     // 3. إرسال أمر ايقاف في قناة الفحص
                     await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد ايقاف');
