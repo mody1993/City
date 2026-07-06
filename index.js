@@ -11,28 +11,34 @@ console.log = (...args) => process.stdout.write(args.join(' ') + '\n');
 console.debug = () => {}; 
 console.warn = () => {};
 
-// دالة إرسال موحدة ومضمونة لكل إصدارات المكتبة
+// دالة إرسال ذكية تحاول طريقتين مختلفتين للإرسال لضمان التوافق
 async function sendMsg(client, roomId, text) {
     try {
-        await client.messaging.send({ groupId: roomId, content: text, isGroup: true });
+        // المحاولة الأولى: عبر messaging
+        await client.messaging.sendGroupMessage(roomId, text);
     } catch (e) {
-        console.log(`[Error] فشل إرسال: ${text}`);
+        try {
+            // المحاولة الثانية: عبر groupMessage (بديل)
+            await client.groupMessage.send(roomId, text);
+        } catch (e2) {
+            console.log(`[خطأ] تعذر الإرسال في الغرفة ${roomId}: ${text}`);
+        }
     }
 }
 
 const ACCOUNTS = [
-    { email: process.env.U_MAIL_1, password: process.env.U_PASS_1, name: 'King', room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_2, password: process.env.U_PASS_2, name: 'KSA', room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_3, password: process.env.U_PASS_3, name: 'MKH', room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_4, password: process.env.U_PASS_4, name: 'SAA', room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_5, password: process.env.U_PASS_5, name: 'JDH', room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_6, password: process.env.U_PASS_6, name: 'MLK', room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_7, password: process.env.U_PASS_7, name: 'CRN', room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_8, password: process.env.U_PASS_8, name: 'REX', room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_9, password: process.env.U_PASS_9, name: 'LRD', room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_10, password: process.env.U_PASS_10, name: 'ROY', room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_11, password: process.env.U_PASS_11, name: 'EMP', room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_12, password: process.env.U_PASS_12, name: 'NOR', room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_1, password: process.env.U_PASS_1, name: 'King',    room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_2, password: process.env.U_PASS_2, name: 'KSA',     room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_3, password: process.env.U_PASS_3, name: 'MKH',     room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_4, password: process.env.U_PASS_4, name: 'SAA',     room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_5, password: process.env.U_PASS_5, name: 'JDH',     room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_6, password: process.env.U_PASS_6, name: 'MLK',     room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_7, password: process.env.U_PASS_7, name: 'CRN',     room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_8, password: process.env.U_PASS_8, name: 'REX',     room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_9, password: process.env.U_PASS_9, name: 'LRD',     room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_10, password: process.env.U_PASS_10, name: 'ROY',   room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_11, password: process.env.U_PASS_11, name: 'EMP',   room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_12, password: process.env.U_PASS_12, name: 'NOR',   room: MAIN_ROOM_ID, cmd: '!مد تحالف ايداع كل' },
     { email: process.env.U_MAIL_13, password: process.env.U_PASS_13, name: 'Passion', room: 13219769, cmd: '!مد تحالف ايداع كل' }
 ];
 
@@ -45,12 +51,16 @@ async function runBot(acc) {
 
     client.on('ready', async () => {
         console.log(`✅ ${acc.name} متصل وجاهز.`);
+        
+        // تأخير 5 ثوانٍ لضمان استقرار الاتصال قبل أول أمر
+        await sleep(5000); 
         await sendMsg(client, CHECK_ROOM_ID, '!مد صندوق');
 
         const mainLoop = setInterval(async () => {
             counter++;
             await sendMsg(client, acc.room, '!مد مهام');
             await sleep(2000);
+            
             if (counter === 3) {
                 await sendMsg(client, acc.room, '!مد اسرق');
                 await sleep(2000);
@@ -74,14 +84,15 @@ async function runBot(acc) {
         client.on('groupMessage', async (msg) => {
             if (msg.targetGroupId === CHECK_ROOM_ID && msg.sourceSubscriberId === BOT_SOURCE_ID && msg.body.includes('📦')) {
                 const body = msg.body;
+                
                 if (body.includes('موقوف')) await sendMsg(client, CHECK_ROOM_ID, '!مد تشغيل');
                 if (body.includes('غير نشط')) await sendMsg(client, CHECK_ROOM_ID, '!مد صندوق ضمان وقت');
                 
                 const points = (body.match(/نقاط الضمان: (\d+)\//) || [])[1] || 0;
                 if (parseInt(points) < 42) {
-                    if (body.includes('ذهبي: [1-9]')) await sendMsg(client, CHECK_ROOM_ID, '!مد صندوق فتح ذهبي');
-                    else if (body.includes('فضي: [1-9]')) await sendMsg(client, CHECK_ROOM_ID, '!مد صندوق فتح فضي');
-                    else if (body.includes('برونزي: [1-9]')) await sendMsg(client, CHECK_ROOM_ID, '!مد صندوق فتح برونزي');
+                    if (body.includes('ذهبي:')) await sendMsg(client, CHECK_ROOM_ID, '!مد صندوق فتح ذهبي');
+                    else if (body.includes('فضي:')) await sendMsg(client, CHECK_ROOM_ID, '!مد صندوق فتح فضي');
+                    else if (body.includes('برونزي:')) await sendMsg(client, CHECK_ROOM_ID, '!مد صندوق فتح برونزي');
                 }
 
                 const timeMatch = body.match(/(\d+)س (\d+)د/);
