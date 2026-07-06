@@ -1,4 +1,7 @@
+import 'dotenv/config';
+import wolfjs from 'wolf.js';
 
+const { WOLF } = wolfjs;
 
 // ================== 🎛️ CONTROL PANEL (المتحكم الرئيسي) ==================
 
@@ -228,7 +231,7 @@ function createBot(config) {
                     
                     // 1. إرسال أمر تشغيل في قناة الفحص والانتظار 3 ثوانٍ
                     await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
-                    await sleep(3000);
+                    await sleep(4000);
 
                     // 2. إرسال أوامر اللعب والسرقة في القناة الرئيسية (بانتظار ثانيتين بين كل أمر)
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
@@ -238,7 +241,7 @@ function createBot(config) {
                     await sleep(2000);
 
                     await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
-                    await sleep(3000); // الانتظار 3 ثوانٍ بعد الإيداع
+                    await sleep(4000); // الانتظار 3 ثوانٍ بعد الإيداع
 
                     // 3. إرسال أمر ايقاف في قناة الفحص
                     await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد ايقاف');
