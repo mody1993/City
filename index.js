@@ -5,9 +5,9 @@ const { WOLF } = wolfjs;
 // إعدادات الغرف وهوية البوت المصدري
 const MAIN_ROOM_ID = 569;
 const CHECK_ROOM_ID = 18654218;
-const BOT_SOURCE_ID = 76023604; // رقم ID البوت الذي تستقبل منه الرسائل
+const BOT_SOURCE_ID = 76023604; 
 
-// تصفية الكونسول
+// سطر إخفاء السطور المزعجة في الكونسول
 process.env.SUPPRESS_NO_CONFIG_WARNING = 'true';
 console.log = (...args) => process.stdout.write(args.join(' ') + '\n');
 console.debug = () => {}; 
@@ -34,69 +34,72 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 async function runBot(acc) {
     const client = new WOLF();
     let counter = 0; 
-    let dynamicCheckTimer = 300000; 
+    let dynamicCheckTimer = 300000; // الافتراضي 5 دقائق للفة الأولى
 
     client.on('ready', async () => {
-        console.log(`✅ ${acc.name} متصل بنجاح.`);
+        console.log(`✅ ${acc.name} متصل بنجاح...`);
         
-        // 1. التشغيل الأولي
-        await client.messaging.sendGroupMessage(CHECK_ROOM_ID, '!مد صندوق');
+        // 1. رحلة التشغيل الأولي
+        await client.groupMessage.send(CHECK_ROOM_ID, '!مد صندوق');
 
-        // 2. دورة اللعب (كل 61 ثانية)
+        // 2. دورة اللعب الأساسية (دورة الدقائق الثلاث)
         const mainLoop = setInterval(async () => {
             counter++;
-            await client.messaging.sendGroupMessage(acc.room, '!مد مهام');
+            // الدقيقة 1 و 2 و 3
+            await client.groupMessage.send(acc.room, '!مد مهام');
             await sleep(2000);
+            
             if (counter === 3) {
-                await client.messaging.sendGroupMessage(acc.room, '!مد اسرق');
+                await client.groupMessage.send(acc.room, '!مد اسرق');
                 await sleep(2000);
                 counter = 0;
             }
-            await client.messaging.sendGroupMessage(acc.room, acc.cmd);
+            await client.groupMessage.send(acc.room, acc.cmd);
         }, 61000);
 
         // 3. دورة الفتح الدوري (كل 500 ثانية)
         const openLoop = setInterval(async () => {
-            await client.messaging.sendGroupMessage(CHECK_ROOM_ID, '!مد صندوق فتح');
+            await client.groupMessage.send(CHECK_ROOM_ID, '!مد صندوق فتح');
         }, 500000);
 
-        // 4. الفحص الذكي (مع شرط هوية البوت)
-        async function smartCheck() {
+        // 4. دورة الفحص الذكي (تتحدث بناءً على رد السيرفر)
+        async function smartCheckLoop() {
             while (true) {
                 await sleep(dynamicCheckTimer);
-                await client.messaging.sendGroupMessage(CHECK_ROOM_ID, '!مد صندوق');
+                await client.groupMessage.send(CHECK_ROOM_ID, '!مد صندوق');
             }
         }
-        smartCheck();
+        smartCheckLoop();
 
         client.on('groupMessage', async (msg) => {
-            // التحقق من هوية البوت والقناة
             if (msg.targetGroupId === CHECK_ROOM_ID && msg.sourceSubscriberId === BOT_SOURCE_ID && msg.body.includes('📦')) {
                 const body = msg.body;
                 
-                // التشغيل والنشاط
-                if (body.includes('موقوف')) await client.messaging.sendGroupMessage(CHECK_ROOM_ID, '!مد تشغيل');
-                if (body.includes('غير نشط')) await client.messaging.sendGroupMessage(CHECK_ROOM_ID, '!مد صندوق ضمان وقت');
+                // منطق التشغيل والنشاط
+                if (body.includes('موقوف')) await client.groupMessage.send(CHECK_ROOM_ID, '!مد تشغيل');
+                if (body.includes('غير نشط')) await client.groupMessage.send(CHECK_ROOM_ID, '!مد صندوق ضمان وقت');
                 
-                // الموازنة
+                // موازنة الصناديق
                 const points = (body.match(/نقاط الضمان: (\d+)\//) || [])[1] || 0;
                 if (parseInt(points) < 42) {
-                    if (body.includes('ذهبي: [1-9]')) await client.messaging.sendGroupMessage(CHECK_ROOM_ID, '!مد صندوق فتح ذهبي');
-                    else if (body.includes('فضي: [1-9]')) await client.messaging.sendGroupMessage(CHECK_ROOM_ID, '!مد صندوق فتح فضي');
-                    else if (body.includes('برونزي: [1-9]')) await client.messaging.sendGroupMessage(CHECK_ROOM_ID, '!مد صندوق فتح برونزي');
+                    if (body.includes('ذهبي: [1-9]')) await client.groupMessage.send(CHECK_ROOM_ID, '!مد صندوق فتح ذهبي');
+                    else if (body.includes('فضي: [1-9]')) await client.groupMessage.send(CHECK_ROOM_ID, '!مد صندوق فتح فضي');
+                    else if (body.includes('برونزي: [1-9]')) await client.groupMessage.send(CHECK_ROOM_ID, '!مد صندوق فتح برونزي');
                 }
 
-                // التوقيت الذكي
+                // تحديث التوقيت الذكي (إضافة 5 ثواني أمان)
                 const timeMatch = body.match(/(\d+)س (\d+)د/);
-                if (timeMatch) dynamicCheckTimer = (parseInt(timeMatch[1]) * 3600000) + (parseInt(timeMatch[2]) * 60000) + 5000;
+                if (timeMatch) {
+                    dynamicCheckTimer = (parseInt(timeMatch[1]) * 3600000) + (parseInt(timeMatch[2]) * 60000) + 5000;
+                }
             }
         });
 
-        // 5. الإغلاق النهائي
+        // 5. الإغلاق النهائي (بعد 5 ساعات و 58 دقيقة)
         setTimeout(async () => {
             clearInterval(mainLoop);
             clearInterval(openLoop);
-            await client.messaging.sendGroupMessage(CHECK_ROOM_ID, '!مد ايقاف');
+            await client.groupMessage.send(CHECK_ROOM_ID, '!مد ايقاف');
             console.log(`🛑 تم إغلاق ${acc.name} بنجاح.`);
             process.exit();
         }, 21480000);
@@ -105,5 +108,5 @@ async function runBot(acc) {
     await client.login(acc.email, acc.password);
 }
 
-// التشغيل التتابعي (15 ثانية لكل بوت)
+// التشغيل التتابعي (15 ثانية بين كل حساب)
 ACCOUNTS.forEach((acc, i) => setTimeout(() => runBot(acc), i * 15000));
