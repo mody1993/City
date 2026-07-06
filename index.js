@@ -35,55 +35,69 @@ function createBot(config) {
     const botName = config.allowedPlayers[0];  
     const playCommand = config.cmd; 
     
-    let globalTimer = 0;
+    let globalTimer = 0; 
 
-    async function getBoxStatus() {
+    async function processBox(g, s, b, points, notReady) {
+        const send = async (cmd) => {
+            await client.sendGroupMessage(CHECK_ROOM.channelId, cmd);
+            await sleep(2000); 
+        };
+        if (notReady) {
+            while (g > 0) { await send('!مد صندوق فتح ذهبي'); g--; }
+            while (s > 0) { await send('!مد صندوق فتح فضي'); s--; }
+            while (b > 0) { await send('!مد صندوق فتح برونزي'); b--; }
+            return;
+        }
+        let need = Math.max(0, 42 - points);
+        while (need > 0) {
+            if (need >= 4 && g > 0) { await send('!مد صندوق فتح ذهبي'); g--; need -= 4; }
+            else if (need >= 2 && s > 0) { await send('!مد صندوق فتح فضي'); s--; need -= 2; }
+            else if (need >= 1 && b > 0) { await send('!مد صندوق فتح برونزي'); b--; need -= 1; }
+            else break;
+        }
+    }
+
+    async function getBoxStatus(attempt = 1) {
         return new Promise((resolve) => {
-            client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق');
+            client.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق');
             let isResolved = false;
-            const handler = (message) => {
+            const handler = async (message) => {
                 if (message.sourceSubscriberId === CHECK_ROOM.targetUserId && message.body?.startsWith('/me 📦 حالة الصناديق')) {
                     isResolved = true;
                     client.removeListener('groupMessage', handler);
+                    clearTimeout(fallbackTimeout);
                     resolve(message.body);
                 }
             };
             client.on('groupMessage', handler);
-            setTimeout(() => { if(!isResolved) { client.removeListener('groupMessage', handler); resolve(null); } }, 12000);
+            const fallbackTimeout = setTimeout(async () => {
+                if (isResolved) return;
+                client.removeListener('groupMessage', handler);
+                if (attempt < 3) {
+                    await sleep(4000);
+                    resolve(await getBoxStatus(attempt + 1));
+                } else resolve(null);
+            }, 12000);
         });
     }
 
     async function sendBoxCommand() {
-        const reply = await getBoxStatus();
-        if (!reply) { globalTimer = 300; return; }
+        const firstReply = await getBoxStatus();
+        if (!firstReply) { globalTimer = 300; return; }
+        let cleanBody = firstReply.replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
+        let lines = cleanBody.split('\n');
+        let timerLine = lines.find(l => l.includes('الجهاز الزمني'));
 
-        const keys = parseInt(reply.match(/مفاتيح:\s*(\d+)/)?.[1] || 0);
-        const points = parseInt(reply.match(/نقاط الضمان:\s*(\d+)\/50/)?.[1] || 0);
-        const isReady = reply.includes('جاهز ✅');
-        const timerLine = reply.match(/⏳ الجهاز الزمني:\s*(.+)/)?.[1] || "";
-
-        if (keys === 0) { globalTimer = 300; return; }
-
-        if (!isReady && points < 50) {
-            await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق فتح');
-            await sleep(3000);
+        if (timerLine) {
+            if (timerLine.includes('موقوف')) {
+                await client.sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
+                await sleep(3000);
+            } else if (timerLine.includes('غير نشط')) {
+                await client.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
+                await sleep(3000);
+            }
         }
-
-        if (timerLine.includes('موقوف')) {
-            await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد تشغيل');
-            await sleep(3000);
-            globalTimer = 5;
-        } else if (timerLine.includes('غير نشط') && isReady) {
-            await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق ضمان وقت');
-            await sleep(3000);
-            globalTimer = 5;
-        } else {
-            const h = timerLine.match(/(\d+)س/);
-            const m = timerLine.match(/(\d+)د/);
-            const s = timerLine.match(/(\d+)ث/);
-            let totalMs = ((h ? parseInt(h[1]) : 0) * 3600 + (m ? parseInt(m[1]) : 0) * 60 + (s ? parseInt(s[1]) : 0)) * 1000;
-            globalTimer = totalMs > 0 ? (totalMs / 1000) + 3 : 300;
-        }
+        globalTimer = 300;
     }
 
     async function mainActionLoop() {
@@ -91,14 +105,18 @@ function createBot(config) {
         while (true) {
             try {
                 minuteCounter++;
-                await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
-                await sleep(2000);
                 if (minuteCounter === 3) {
-                    await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, '!مد اسرق');
+                    await client.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
                     await sleep(2000);
+                    await client.sendGroupMessage(PLAY_CHANNEL_ID, '!مد اسرق');
+                    await sleep(2000);
+                    await client.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
                     minuteCounter = 0;
+                } else {
+                    await client.sendGroupMessage(PLAY_CHANNEL_ID, '!مد مهام');
+                    await sleep(2000);
+                    await client.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
                 }
-                await client.messaging.sendGroupMessage(PLAY_CHANNEL_ID, playCommand);
                 await sleep(61000);
             } catch (e) { await sleep(5000); }
         }
@@ -106,7 +124,7 @@ function createBot(config) {
 
     async function openBoxLoop() {
         while (true) {
-            await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق فتح');
+            await client.sendGroupMessage(CHECK_ROOM.channelId, '!مد صندوق فتح');
             await sleep(500000);
         }
     }
@@ -123,9 +141,8 @@ function createBot(config) {
         mainActionLoop();
         openBoxLoop();
         checkLoop();
-        
         setTimeout(async () => {
-            await client.messaging.sendGroupMessage(CHECK_ROOM.channelId, '!مد ايقاف');
+            await client.sendGroupMessage(CHECK_ROOM.channelId, '!مد ايقاف');
         }, 21480000);
     });
 
