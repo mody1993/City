@@ -69,5 +69,8 @@ jobs:
 
           U_MAIL_13: ${{ secrets.U_MAIL_13 }}
           U_PASS_13: ${{ secrets.U_PASS_13 }}
+          
+          U_MAIL_14: ${{ secrets.U_MAIL_14 }}
+          U_PASS_14: ${{ secrets.U_PASS_14 }}
 
         run: node index.js
