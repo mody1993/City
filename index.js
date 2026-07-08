@@ -117,7 +117,7 @@ const ACCOUNTS = [
 async function safeSend(client, roomId, cmd, accountName = 'UNKNOWN') {
     try {
         await client.messaging.sendChannelMessage(Number(roomId), cmd);
-        originalLog(📤 [${accountName}] ${cmd});
+        originalLog('📤 [${accountName}] ${cmd});
         return true;
     } catch (err) {
         originalError(❌ [${accountName}] فشل الإرسال: ${err.message});
