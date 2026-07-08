@@ -77,8 +77,8 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 // ================== CONTROL PANEL ==================
 
 const MAIN_ROOM = {
-    channelId: 569,
-    targetUserId: 84520028
+    channelId: 74000,
+    targetUserId: 84520029
 };
 
 const SECOND_ROOM = {
