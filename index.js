@@ -117,10 +117,10 @@ const ACCOUNTS = [
 async function safeSend(client, roomId, cmd, accountName = 'UNKNOWN') {
     try {
         await client.messaging.sendChannelMessage(Number(roomId), cmd);
-       originalLog(`🧢 [${accountName}] ${cmd}`);
+        originalLog(`🧢 [${accountName}] ${cmd}`);
         return true;
     } catch (err) {
-        originalError(❌ [${accountName}] فشل الإرسال: ${err.message});
+        originalError(`❌ [${accountName}] فشل الإرسال: ${err.message}`);
         return false;
     }
 }
@@ -145,7 +145,6 @@ function createBot(config) {
     const playCommand = acc.cmd;
 
     let globalTimer = 0;
-    let isTimeDeviceActive = false;
 
     let isMainLoopStarted = false;
     let isOpenBoxLoopStarted = false;
@@ -155,8 +154,6 @@ function createBot(config) {
     const accountState = {
         isTerminated: false
     };
-
-    // ================== BOX PROCESSING ==================
 
     async function processBox(g, s, b, points, notReady) {
         const send = async (cmd) => {
@@ -204,8 +201,6 @@ function createBot(config) {
         }
     }
 
-    // ================== جلب حالة الصناديق ==================
-
     async function getBoxStatus(attempt = 1) {
         return new Promise(async (resolve) => {
             let isResolved = false;
@@ -234,7 +229,7 @@ function createBot(config) {
                 client.removeListener('message', handler);
 
                 if (attempt < 3) {
-                    console.log([${botName}] ⚠️ تعليق في الفحص! إعادة المحاولة رقم ${attempt}...);
+                    console.log(`[${botName}] ⚠️ تعليق في الفحص! إعادة المحاولة رقم ${attempt}...`);
                     await sleep(4000);
                     resolve(await getBoxStatus(attempt + 1));
                 } else {
@@ -244,15 +239,13 @@ function createBot(config) {
         });
     }
 
-    // ================== فحص الصناديق والجهاز ==================
-
     async function sendBoxCommand() {
-        console.log([${botName}] 🔍 [المرحلة 1] جاري إرسال أمر الفحص...);
+        console.log(`[${botName}] 🔍 [المرحلة 1] جاري إرسال أمر الفحص...`);
 
         const firstReply = await getBoxStatus();
 
         if (!firstReply) {
-            console.log([${botName}] 🚨 فشل الفحص! وضع الأمان 5 دقائق...);
+            console.log(`[${botName}] 🚨 فشل الفحص! وضع الأمان 5 دقائق...`);
             globalTimer = 300;
             return;
         }
@@ -265,12 +258,12 @@ function createBot(config) {
 
         if (timerLine) {
             if (timerLine.includes('موقوف')) {
-                console.log([${botName}] 🎛️ الجهاز موقوف! إرسال أمر تشغيل...);
+                console.log(`[${botName}] 🎛️ الجهاز موقوف! إرسال أمر تشغيل...`);
                 await safeSend(client, CHECK_ROOM_ID, '!مد تشغيل', acc.name);
                 await sleep(3000);
                 stateChanged = true;
             } else if (timerLine.includes('غير نشط')) {
-                console.log([${botName}] ⏳ الجهاز غير نشط! إرسال أمر ضمان وقت...);
+                console.log(`[${botName}] ⏳ الجهاز غير نشط! إرسال أمر ضمان وقت...`);
                 await safeSend(client, CHECK_ROOM_ID, '!مد صندوق ضمان وقت', acc.name);
                 await sleep(3000);
                 stateChanged = true;
@@ -280,12 +273,12 @@ function createBot(config) {
         let finalReply = firstReply;
 
         if (stateChanged) {
-            console.log([${botName}] 🔍 [المرحلة 2] تحديث البيانات بعد التنشيط...);
+            console.log(`[${botName}] 🔍 [المرحلة 2] تحديث البيانات بعد التنشيط...`);
 
             finalReply = await getBoxStatus();
 
             if (!finalReply) {
-                console.log([${botName}] 🚨 فشل الفحص الثاني! وضع الأمان 5 دقائق...);
+                console.log(`[${botName}] 🚨 فشل الفحص الثاني! وضع الأمان 5 دقائق...`);
                 globalTimer = 300;
                 return;
             }
@@ -314,7 +307,6 @@ function createBot(config) {
         if (timerLine) {
             if (timerLine.includes('غير نشط') || timerLine.includes('موقوف')) {
                 tempSeconds = 300;
-                isTimeDeviceActive = false;
             } else {
                 const h = timerLine.match(/(\d+)س/);
                 const m = timerLine.match(/(\d+)د/);
@@ -325,16 +317,13 @@ function createBot(config) {
                 if (sMatch) tempSeconds += parseInt(sMatch[1], 10);
 
                 tempSeconds += 5;
-                isTimeDeviceActive = true;
             }
         }
 
         globalTimer = tempSeconds > 0 ? tempSeconds : 300;
 
-        console.log([${botName}] ⏱️ الفحص انتهى -> دورة الفحص القادمة بعد: ${globalTimer} ثانية.);
+        console.log(`[${botName}] ⏱️ الفحص انتهى -> دورة الفحص القادمة بعد: ${globalTimer} ثانية.`);
     }
-
-    // ================== دورة اللعب ==================
 
     async function mainActionLoop() {
         let minuteCounter = 0;
@@ -344,7 +333,7 @@ function createBot(config) {
                 minuteCounter++;
 
                 if (minuteCounter === 3) {
-                    console.log([${botName}] 🥷 الدقيقة [3]: إرسال مهام + سرقة + إيداع...);
+                    console.log(`[${botName}] 🥷 الدقيقة [3]: إرسال مهام + سرقة + إيداع...`);
 
                     await safeSend(client, PLAY_CHANNEL_ID, '!مد مهام', acc.name);
                     await sleep(2000);
@@ -356,7 +345,7 @@ function createBot(config) {
 
                     minuteCounter = 0;
                 } else {
-                    console.log([${botName}] 🔄 الدقيقة [${minuteCounter}]: إرسال مهام + إيداع...);
+                    console.log(`[${botName}] 🔄 الدقيقة [${minuteCounter}]: إرسال مهام + إيداع...`);
 
                     await safeSend(client, PLAY_CHANNEL_ID, '!مد مهام', acc.name);
                     await sleep(2000);
@@ -367,54 +356,48 @@ function createBot(config) {
                 await sleep(61000);
 
             } catch (e) {
-                console.error([${botName}] ❌ خطأ في الدورة الموحدة:, e.message);
+                console.error(`[${botName}] ❌ خطأ في الدورة الموحدة:`, e.message);
                 await sleep(5000);
             }
         }
     }
-
-    // ================== فتح الصندوق الدوري ==================
 
     async function openBoxLoop() {
         while (!accountState.isTerminated) {
             try {
-                console.log([${botName}] 📦 إرسال أمر الفتح الدوري في قناة الفحص...);
+                console.log(`[${botName}] 📦 إرسال أمر الفتح الدوري في قناة الفحص...`);
                 await safeSend(client, CHECK_ROOM_ID, '!مد صندوق فتح', acc.name);
                 await sleep(500000);
             } catch (e) {
-                console.error([${botName}] ❌ خطأ في دورة الفتح الدوري:, e.message);
+                console.error(`[${botName}] ❌ خطأ في دورة الفتح الدوري:`, e.message);
                 await sleep(5000);
             }
         }
     }
-
-    // ================== دورة الفحص الذكي ==================
 
     async function checkLoop() {
         while (!accountState.isTerminated) {
             try {
                 const waitSeconds = globalTimer > 0 ? globalTimer : 300;
 
-                console.log([${botName}] ⏳ انتظار ${waitSeconds} ثانية حتى فحص الجهاز الزمني...);
+                console.log(`[${botName}] ⏳ انتظار ${waitSeconds} ثانية حتى فحص الجهاز الزمني...`);
                 await sleep(waitSeconds * 1000);
 
-                console.log([${botName}] 🔁 انتهى المؤقت، جاري إرسال !مد صندوق لفحص الضمان والجهاز...);
+                console.log(`[${botName}] 🔁 انتهى المؤقت، جاري إرسال !مد صندوق لفحص الضمان والجهاز...`);
                 await sendBoxCommand();
 
             } catch (e) {
-                console.error([${botName}] ❌ خطأ في دورة الفحص:, e.message);
+                console.error(`[${botName}] ❌ خطأ في دورة الفحص:`, e.message);
                 await sleep(5000);
             }
         }
     }
 
-    // ================== READY ==================
-
     client.on('ready', async () => {
-        console.log(✅ الحساب [${botName}] شبك بنجاح! اللعب في [${PLAY_CHANNEL_ID}] | الفحص في [${CHECK_ROOM_ID}]);
+        console.log(`✅ الحساب [${botName}] شبك بنجاح! اللعب في [${PLAY_CHANNEL_ID}] | الفحص في [${CHECK_ROOM_ID}]`);
 
         try {
-            console.log([${botName}] 🚀 بدء تنفيذ تسلسل أوامر التشغيل...);
+            console.log(`[${botName}] 🚀 بدء تنفيذ تسلسل أوامر التشغيل...`);
 
             if (!isMainLoopStarted) {
                 isMainLoopStarted = true;
@@ -434,24 +417,24 @@ function createBot(config) {
             if (!isInitialBoxCheckStarted) {
                 isInitialBoxCheckStarted = true;
                 sendBoxCommand().catch(err => {
-                    console.error([${botName}] خطأ في فحص الصناديق الأولي:, err.message);
+                    console.error(`[${botName}] خطأ في فحص الصناديق الأولي:`, err.message);
                 });
             }
 
             setTimeout(async () => {
-                console.log([${botName}] 🛑 مضت 5 ساعات و 58 دقيقة! إرسال أمر الإيقاف...);
+                console.log(`[${botName}] 🛑 مضت 5 ساعات و 58 دقيقة! إرسال أمر الإيقاف...`);
 
                 accountState.isTerminated = true;
 
                 try {
                     await safeSend(client, CHECK_ROOM_ID, '!مد ايقاف', acc.name);
                 } catch (stopErr) {
-                    console.error([${botName}] خطأ أثناء إرسال أمر الإيقاف:, stopErr.message);
+                    console.error(`[${botName}] خطأ أثناء إرسال أمر الإيقاف:`, stopErr.message);
                 }
             }, 21480000);
 
         } catch (err) {
-            console.error([${botName}] ❌ خطأ تهيئة البوت:, err.message);
+            console.error(`[${botName}] ❌ خطأ تهيئة البوت:`, err.message);
         }
     });
 
