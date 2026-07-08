@@ -91,10 +91,9 @@ const CHECK_ROOM = {
     targetUserId: 84520026
 };
 
-// ================== غرفة السرقة ==================
 // ضع رقم غرفة السرقة بدل 0
 const STEAL_ROOM = {
-    channelId: 0
+    channelId: 18654218
 };
 
 const SPECIAL_ROOM_USERS = [];
