@@ -91,6 +91,12 @@ const CHECK_ROOM = {
     targetUserId: 84520026
 };
 
+// ================== غرفة السرقة ==================
+// ضع رقم غرفة السرقة بدل 0
+const STEAL_ROOM = {
+    channelId: 0
+};
+
 const SPECIAL_ROOM_USERS = [];
 const specialUsersSet = new Set(SPECIAL_ROOM_USERS);
 
@@ -109,7 +115,8 @@ const ACCOUNTS = [
     { email: process.env.U_MAIL_10, password: process.env.U_PASS_10, allowedPlayers: ['ROY'],     cmd: '!مد تحالف ايداع كل' },
     { email: process.env.U_MAIL_11, password: process.env.U_PASS_11, allowedPlayers: ['EMP'],     cmd: '!مد تحالف ايداع كل' },
     { email: process.env.U_MAIL_12, password: process.env.U_PASS_12, allowedPlayers: ['NOR'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_13, password: process.env.U_PASS_13, allowedPlayers: ['Passion'], cmd: '!مد تحالف ايداع كل' }
+    { email: process.env.U_MAIL_13, password: process.env.U_PASS_13, allowedPlayers: ['Passion'], cmd: '!مد تحالف ايداع كل' },
+    { email: process.env.U_MAIL_14, password: process.env.U_PASS_14, allowedPlayers: ['NOX'],   cmd: '!مد تحالف ايداع كل' }
 ];
 
 // ================== SAFE SEND ==================
@@ -140,6 +147,7 @@ function createBot(config) {
 
     const PLAY_CHANNEL_ID = config.channelId;
     const CHECK_ROOM_ID = CHECK_ROOM.channelId;
+    const STEAL_ROOM_ID = STEAL_ROOM.channelId;
 
     const botName = acc.name;
     const playCommand = acc.cmd;
@@ -150,6 +158,7 @@ function createBot(config) {
     let isOpenBoxLoopStarted = false;
     let isCheckLoopStarted = false;
     let isInitialBoxCheckStarted = false;
+    let isStealLoopStarted = false;
 
     const accountState = {
         isTerminated: false
@@ -393,6 +402,26 @@ function createBot(config) {
         }
     }
 
+    async function stealLoop() {
+        if (!STEAL_ROOM_ID || Number(STEAL_ROOM_ID) <= 0) {
+            console.log(`[${botName}] ⚠️ لم يتم ضبط غرفة السرقة STEAL_ROOM.channelId، تم تخطي دورة السرقة.`);
+            return;
+        }
+
+        while (!accountState.isTerminated) {
+            try {
+                console.log(`[${botName}] 🥷 إرسال أمر السرقة في غرفة السرقة...`);
+                await safeSend(client, STEAL_ROOM_ID, '!مد سرقة ٩٩٩٣', acc.name);
+
+                await sleep((30 * 60 * 1000) + 3000);
+
+            } catch (e) {
+                console.error(`[${botName}] ❌ خطأ في دورة السرقة:`, e.message);
+                await sleep(5000);
+            }
+        }
+    }
+
     client.on('ready', async () => {
         console.log(`✅ الحساب [${botName}] شبك بنجاح! اللعب في [${PLAY_CHANNEL_ID}] | الفحص في [${CHECK_ROOM_ID}]`);
 
@@ -412,6 +441,11 @@ function createBot(config) {
             if (!isCheckLoopStarted) {
                 isCheckLoopStarted = true;
                 checkLoop();
+            }
+
+            if (!isStealLoopStarted) {
+                isStealLoopStarted = true;
+                stealLoop();
             }
 
             if (!isInitialBoxCheckStarted) {
