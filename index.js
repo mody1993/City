@@ -77,7 +77,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 // ================== CONTROL PANEL ==================
 
 const MAIN_ROOM = {
-    channelId: 11413218,
+    channelId: 569,
     targetUserId: 84520028
 };
 
@@ -87,8 +87,8 @@ const SECOND_ROOM = {
 };
 
 const CHECK_ROOM = {
-    channelId: 445,
-    targetUserId: 84520026
+    channelId: 18654218,
+    targetUserId: 76023232
 };
 
 // ضع رقم غرفة السرقة بدل 0
