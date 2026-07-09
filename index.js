@@ -410,7 +410,7 @@ function createBot(config) {
         while (!accountState.isTerminated) {
             try {
                 console.log(`[${botName}] 🥷 إرسال أمر السرقة في غرفة السرقة...`);
-                await safeSend(client, STEAL_ROOM_ID, '!مد سرقة 4464', acc.name);
+                await safeSend(client, STEAL_ROOM_ID, '!مد سرقة 36350736', acc.name);
 
                 await sleep((30 * 60 * 1000) + 3000);
 
