@@ -1,10 +1,4 @@
-import 'dotenv/config';
 
-process.env.SUPPRESS_NO_CONFIG_WARNING = 'true';
-
-const originalLog = console.log.bind(console);
-const originalWarn = console.warn.bind(console);
-const originalError = console.error.bind(console);
 
 const HIDE_LOGS = [
     '[DEBUG]',
