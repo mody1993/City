@@ -77,7 +77,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 // ================== CONTROL PANEL ==================
 
 const MAIN_ROOM = {
-    channelId: 569,
+    channelId: 11413218,
     targetUserId: 84520028
 };
 
@@ -410,7 +410,7 @@ function createBot(config) {
         while (!accountState.isTerminated) {
             try {
                 console.log(`[${botName}] 🥷 إرسال أمر السرقة في غرفة السرقة...`);
-                await safeSend(client, STEAL_ROOM_ID, '!مد سرقة ٩٩٩٣', acc.name);
+                await safeSend(client, STEAL_ROOM_ID, '!مد سرقة 4464', acc.name);
 
                 await sleep((30 * 60 * 1000) + 3000);
 
