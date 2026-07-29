@@ -1,486 +1,749 @@
+import 'dotenv/config';
 
+process.env.SUPPRESS_NO_CONFIG_WARNING = 'true';
+
+// =========================================================================
+// 🧹 1. تنظيف وفلترة سجلات الكونسول (Console Logs)
+// =========================================================================
+const originalLog = console.log.bind(console);
+const originalWarn = console.warn.bind(console);
+const originalError = console.error.bind(console);
 
 const HIDE_LOGS = [
-    '[DEBUG]',
-    '[WARN]',
-    'DEBUG',
-    'WARN',
-    'CleanUp',
-    'Synchronise',
-    'GroupAudioCountUpdated',
-    'MessageUpdate',
-    'Websocket',
-    'TipAdd',
-    'Message from self ignoring',
-    'Store Reset',
-    'apiKey will be required',
-    'No configurations found',
-    'SUPPRESS_NO_CONFIG_WARNING',
-    'Logged in [profile:',
-    'channel that was not cached',
-    'privateMessageSubscription',
-    'channelMessageSubscription',
-    'tipChannelSubscription'
+  '[DEBUG]', '[WARN]', 'DEBUG', 'WARN', 'CleanUp', 'Synchronise',
+  'GroupAudioCountUpdated', 'MessageUpdate', 'Websocket', 'TipAdd',
+  'Message from self ignoring', 'Store Reset', 'apiKey will be required',
+  'APIKey will be required', 'No configurations found', 'SUPPRESS_NO_CONFIG_WARNING',
+  'Logged in [profile:', 'channel that was not cached', 'privateMessageSubscription',
+  'channelMessageSubscription', 'tipChannelSubscription'
 ];
 
 function shouldHide(text) {
-    return HIDE_LOGS.some(word => text.includes(word));
+  return HIDE_LOGS.some(word => text.includes(word));
 }
 
 console.log = (...args) => {
-    const text = args.map(String).join(' ');
-    if (shouldHide(text)) return;
-    originalLog(...args);
+  const text = args.map(String).join(' ');
+  if (shouldHide(text)) return;
+  originalLog(...args);
 };
-
 console.info = console.log;
 console.debug = console.log;
 
 console.warn = (...args) => {
-    const text = args.map(String).join(' ');
-    if (shouldHide(text)) return;
-    originalWarn(...args);
+  const text = args.map(String).join(' ');
+  if (shouldHide(text)) return;
+  originalWarn(...args);
 };
 
 console.error = (...args) => {
-    const text = args.map(String).join(' ');
-    if (shouldHide(text)) return;
-    originalError(...args);
+  const text = args.map(String).join(' ');
+  if (shouldHide(text)) return;
+  originalError(...args);
 };
 
-const stdoutWrite = process.stdout.write.bind(process.stdout);
-const stderrWrite = process.stderr.write.bind(process.stderr);
-
-process.stdout.write = (chunk, encoding, callback) => {
-    const text = String(chunk);
-    if (shouldHide(text)) return true;
-    return stdoutWrite(chunk, encoding, callback);
-};
-
-process.stderr.write = (chunk, encoding, callback) => {
-    const text = String(chunk);
-    if (shouldHide(text)) return true;
-    return stderrWrite(chunk, encoding, callback);
-};
-
+// =========================================================================
+// 📦 2. استيراد المكتبة والأدوات
+// =========================================================================
 const wolfjs = await import('wolf.js');
 const { WOLF } = wolfjs.default || wolfjs;
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// ================== CONTROL PANEL ==================
+// =========================================================================
+// ⚙️ 3. الإعدادات وتخصيص الحسابات
+// =========================================================================
+const TRACKED_BOT_ID = 80277459;
+const RACE_ROOM_ID = 569;
 
-const MAIN_ROOM = {
-    channelId: 569,
-    targetUserId: 84520028
-};
+const AIRPLANE_ROOM_ID = 569;
+const GRAND_ROOM_ID = 569;
+const XO_ROOM_ID = 18187126;
+const XO_BOT_ID = 82727814;
+const XO_START_COMMAND = '!xo private ai 3';
 
-const SECOND_ROOM = {
-    channelId: 13219769,
-    targetUserId: 76023171
-};
-
-const CHECK_ROOM = {
-    channelId: 18654218,
-    targetUserId: 76023232
-};
-
-// ضع رقم غرفة السرقة بدل 0
-const STEAL_ROOM = {
-    channelId: 18654218
-};
-
-const SPECIAL_ROOM_USERS = [];
-const specialUsersSet = new Set(SPECIAL_ROOM_USERS);
-
-// ================== ACCOUNTS ==================
+const RACE_END_TIMEOUT_MS = 120 * 1000;    // 2 دقيقة لمراقبة انتهاء السباق
+const ENERGY_FALLBACK_MS = 11 * 60 * 1000; // 11 دقيقة كحد أقصى لاسترجاع الطاقة
+const BONUS_DELAY = 12000;                  // 12 ثانية بين إرسال المعززات
+const WORK_TIME = 54 * 60 * 1000;           // 54 دقيقة عمل للمعززات
+const REST_TIME = 6 * 60 * 1000;            // 6 دقائق راحة للمعززات
 
 const ACCOUNTS = [
-    { email: process.env.U_MAIL_1,  password: process.env.U_PASS_1,  allowedPlayers: ['King'],    cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_2,  password: process.env.U_PASS_2,  allowedPlayers: ['KSA'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_3,  password: process.env.U_PASS_3,  allowedPlayers: ['MKH'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_4,  password: process.env.U_PASS_4,  allowedPlayers: ['SAA'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_5,  password: process.env.U_PASS_5,  allowedPlayers: ['JDH'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_6,  password: process.env.U_PASS_6,  allowedPlayers: ['MLK'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_7,  password: process.env.U_PASS_7,  allowedPlayers: ['CRN'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_8,  password: process.env.U_PASS_8,  allowedPlayers: ['REX'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_9,  password: process.env.U_PASS_9,  allowedPlayers: ['LRD'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_10, password: process.env.U_PASS_10, allowedPlayers: ['ROY'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_11, password: process.env.U_PASS_11, allowedPlayers: ['EMP'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_12, password: process.env.U_PASS_12, allowedPlayers: ['NOR'],     cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_13, password: process.env.U_PASS_13, allowedPlayers: ['Passion'], cmd: '!مد تحالف ايداع كل' },
-    { email: process.env.U_MAIL_14, password: process.env.U_PASS_14, allowedPlayers: ['NOX'],   cmd: '!مد تحالف ايداع كل' }
+  { email: process.env.U_MAIL_1, password: process.env.U_PASS_1, name: 'King', id: 38770375, index: 1, sChannel: 569 },
+  { email: process.env.U_MAIL_2, password: process.env.U_PASS_2, name: 'KSA', id: 27112980, index: 2, sChannel: 569 },
+  { email: process.env.U_MAIL_3, password: process.env.U_PASS_3, name: 'MKH', id: 1780249, index: 3, sChannel: 569 },
+  { email: process.env.U_MAIL_4, password: process.env.U_PASS_4, name: 'SAA', id: 2251312, index: 4, sChannel: 569 },
+  { email: process.env.U_MAIL_5, password: process.env.U_PASS_5, name: 'JDH', id: 39043364, index: 5, sChannel: 569 },
+  { email: process.env.U_MAIL_6, password: process.env.U_PASS_6, name: 'MLK', id: 34648535, index: 6, sChannel: 569 },
+  { email: process.env.U_MAIL_7, password: process.env.U_PASS_7, name: 'CRN', id: 79996355, index: 7, sChannel: 569 },
+  { email: process.env.U_MAIL_8, password: process.env.U_PASS_8, name: 'REX', id: 34435550, index: 8, sChannel: 569 },
+  { email: process.env.U_MAIL_9, password: process.env.U_PASS_9, name: 'LRD', id: 15859439, index: 9, sChannel: 569 },
+  { email: process.env.U_MAIL_10, password: process.env.U_PASS_10, name: 'ROY', id: 32198971, index: 10, sChannel: 569 },
+  { email: process.env.U_MAIL_11, password: process.env.U_PASS_11, name: 'EMP', id: 39515341, index: 11, sChannel: 569 },
+  { email: process.env.U_MAIL_12, password: process.env.U_PASS_12, name: 'NOR', id: 2374823, index: 12, sChannel: 569 }
 ];
 
-// ================== SAFE SEND ==================
+// 🎯 تخصيص تفاعلات الألعاب
+const ACTIVE_RACE_ACCOUNTS      = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const AIRPLANE_ACCOUNTS         = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const GRAND_COLLECT_ACCOUNTS    = [1, 2, 3, 4];
+const XO_ACCOUNTS                = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-async function safeSend(client, roomId, cmd, accountName = 'UNKNOWN') {
-    try {
-        await client.messaging.sendChannelMessage(Number(roomId), cmd);
-        originalLog(`🧢 [${accountName}] ${cmd}`);
-        return true;
-    } catch (err) {
-        originalError(`❌ [${accountName}] فشل الإرسال: ${err.message}`);
-        return false;
-    }
+// 🎁 تحديد الحسابات والأوامر المخصصة للمعززات
+const BONUS_ACCOUNTS_STEAL  = [];
+const BONUS_ACCOUNTS_HERO   = [];
+const BONUS_ACCOUNTS_HUNTER = [];
+const BONUS_ACCOUNTS_HUNT   = [];
+
+const BOT_TRIGGERS = [
+  { command: "!اسرق 5", accounts: 39369782 },
+  { command: "!بطل 5",  accounts: 45578849 },
+  { command: "!صياد 3", accounts: 76305584 },
+  { command: "!صيد 3",  accounts: 32060007 }
+];
+
+function isAccountActive(index) {
+  return ACTIVE_RACE_ACCOUNTS.includes(Number(index));
 }
 
-// ================== BOT FACTORY ==================
-
-function createBot(config) {
-    const client = new WOLF();
-
-    const acc = {
-        name: config.allowedPlayers[0],
-        email: config.email,
-        password: config.password,
-        allowedPlayers: config.allowedPlayers,
-        cmd: config.cmd
-    };
-
-    const PLAY_CHANNEL_ID = config.channelId;
-    const CHECK_ROOM_ID = CHECK_ROOM.channelId;
-    const STEAL_ROOM_ID = STEAL_ROOM.channelId;
-
-    const botName = acc.name;
-    const playCommand = acc.cmd;
-
-    let globalTimer = 0;
-
-    let isMainLoopStarted = false;
-    let isOpenBoxLoopStarted = false;
-    let isCheckLoopStarted = false;
-    let isInitialBoxCheckStarted = false;
-    let isStealLoopStarted = false;
-
-    const accountState = {
-        isTerminated: false
-    };
-
-    async function processBox(g, s, b, points, notReady) {
-        const send = async (cmd) => {
-            await safeSend(client, CHECK_ROOM_ID, cmd, acc.name);
-            await sleep(2000);
-        };
-
-        if (notReady) {
-            while (g > 0) {
-                await send('!مد صندوق فتح ذهبي');
-                g--;
-            }
-
-            while (s > 0) {
-                await send('!مد صندوق فتح فضي');
-                s--;
-            }
-
-            while (b > 0) {
-                await send('!مد صندوق فتح برونزي');
-                b--;
-            }
-
-            return;
-        }
-
-        let need = Math.max(0, 42 - points);
-
-        while (need > 0) {
-            if (need >= 4 && g > 0) {
-                await send('!مد صندوق فتح ذهبي');
-                g--;
-                need -= 4;
-            } else if (need >= 2 && s > 0) {
-                await send('!مد صندوق فتح فضي');
-                s--;
-                need -= 2;
-            } else if (need >= 1 && b > 0) {
-                await send('!مد صندوق فتح برونزي');
-                b--;
-                need -= 1;
-            } else {
-                break;
-            }
-        }
-    }
-
-    async function getBoxStatus(attempt = 1) {
-        return new Promise(async (resolve) => {
-            let isResolved = false;
-
-            const handler = async (message) => {
-                if (
-                    Number(message.sourceUserId) === Number(CHECK_ROOM.targetUserId) &&
-                    Number(message.targetChannelId) === Number(CHECK_ROOM.channelId) &&
-                    typeof message.body === 'string' &&
-                    message.body.startsWith('/me 📦 حالة الصناديق')
-                ) {
-                    isResolved = true;
-                    client.removeListener('message', handler);
-                    clearTimeout(fallbackTimeout);
-                    resolve(message.body);
-                }
-            };
-
-            client.on('message', handler);
-
-            await safeSend(client, CHECK_ROOM_ID, '!مد صندوق', acc.name);
-
-            const fallbackTimeout = setTimeout(async () => {
-                if (isResolved) return;
-
-                client.removeListener('message', handler);
-
-                if (attempt < 3) {
-                    console.log(`[${botName}] ⚠️ تعليق في الفحص! إعادة المحاولة رقم ${attempt}...`);
-                    await sleep(4000);
-                    resolve(await getBoxStatus(attempt + 1));
-                } else {
-                    resolve(null);
-                }
-            }, 12000);
-        });
-    }
-
-    async function sendBoxCommand() {
-        console.log(`[${botName}] 🔍 [المرحلة 1] جاري إرسال أمر الفحص...`);
-
-        const firstReply = await getBoxStatus();
-
-        if (!firstReply) {
-            console.log(`[${botName}] 🚨 فشل الفحص! وضع الأمان 5 دقائق...`);
-            globalTimer = 300;
-            return;
-        }
-
-        let cleanBody = firstReply.replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
-        let lines = cleanBody.split('\n');
-        let timerLine = lines.find(l => l.includes('الجهاز الزمني'));
-
-        let stateChanged = false;
-
-        if (timerLine) {
-            if (timerLine.includes('موقوف')) {
-                console.log(`[${botName}] 🎛️ الجهاز موقوف! إرسال أمر تشغيل...`);
-                await safeSend(client, CHECK_ROOM_ID, '!مد تشغيل', acc.name);
-                await sleep(3000);
-                stateChanged = true;
-            } else if (timerLine.includes('غير نشط')) {
-                console.log(`[${botName}] ⏳ الجهاز غير نشط! إرسال أمر ضمان وقت...`);
-                await safeSend(client, CHECK_ROOM_ID, '!مد صندوق ضمان وقت', acc.name);
-                await sleep(3000);
-                stateChanged = true;
-            }
-        }
-
-        let finalReply = firstReply;
-
-        if (stateChanged) {
-            console.log(`[${botName}] 🔍 [المرحلة 2] تحديث البيانات بعد التنشيط...`);
-
-            finalReply = await getBoxStatus();
-
-            if (!finalReply) {
-                console.log(`[${botName}] 🚨 فشل الفحص الثاني! وضع الأمان 5 دقائق...`);
-                globalTimer = 300;
-                return;
-            }
-
-            cleanBody = finalReply.replace(/[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
-            lines = cleanBody.split('\n');
-            timerLine = lines.find(l => l.includes('الجهاز الزمني'));
-        }
-
-        const guaranteeLine = lines.find(l => l.includes('الضمان') && !l.includes('نقاط'));
-        const isGuaranteeReady = guaranteeLine ? guaranteeLine.includes('جاهز') : false;
-        const notReady = !isGuaranteeReady;
-
-        const boxes = cleanBody.match(/برونزي:\s*(\d+)\s*\|\s*فضي:\s*(\d+)\s*\|\s*ذهبي:\s*(\d+)/);
-        const pointsMatch = cleanBody.match(/نقاط الضمان:\s*(\d+)\/50/);
-
-        const g = boxes ? parseInt(boxes[3], 10) : 0;
-        const s = boxes ? parseInt(boxes[2], 10) : 0;
-        const b = boxes ? parseInt(boxes[1], 10) : 0;
-        const p = pointsMatch ? parseInt(pointsMatch[1], 10) : 0;
-
-        await processBox(g, s, b, p, notReady);
-
-        let tempSeconds = 0;
-
-        if (timerLine) {
-            if (timerLine.includes('غير نشط') || timerLine.includes('موقوف')) {
-                tempSeconds = 300;
-            } else {
-                const h = timerLine.match(/(\d+)س/);
-                const m = timerLine.match(/(\d+)د/);
-                const sMatch = timerLine.match(/(\d+)ث/);
-
-                if (h) tempSeconds += parseInt(h[1], 10) * 3600;
-                if (m) tempSeconds += parseInt(m[1], 10) * 60;
-                if (sMatch) tempSeconds += parseInt(sMatch[1], 10);
-
-                tempSeconds += 5;
-            }
-        }
-
-        globalTimer = tempSeconds > 0 ? tempSeconds : 300;
-
-        console.log(`[${botName}] ⏱️ الفحص انتهى -> دورة الفحص القادمة بعد: ${globalTimer} ثانية.`);
-    }
-
-    async function mainActionLoop() {
-        let minuteCounter = 0;
-
-        while (!accountState.isTerminated) {
-            try {
-                minuteCounter++;
-
-                if (minuteCounter === 3) {
-                    console.log(`[${botName}] 🥷 الدقيقة [3]: إرسال مهام + سرقة + إيداع...`);
-
-                    await safeSend(client, PLAY_CHANNEL_ID, '!مد مهام', acc.name);
-                    await sleep(2000);
-
-                    await safeSend(client, PLAY_CHANNEL_ID, '!مد اسرق', acc.name);
-                    await sleep(2000);
-
-                    await safeSend(client, PLAY_CHANNEL_ID, playCommand, acc.name);
-
-                    minuteCounter = 0;
-                } else {
-                    console.log(`[${botName}] 🔄 الدقيقة [${minuteCounter}]: إرسال مهام + إيداع...`);
-
-                    await safeSend(client, PLAY_CHANNEL_ID, '!مد مهام', acc.name);
-                    await sleep(2000);
-
-                    await safeSend(client, PLAY_CHANNEL_ID, playCommand, acc.name);
-                }
-
-                await sleep(61000);
-
-            } catch (e) {
-                console.error(`[${botName}] ❌ خطأ في الدورة الموحدة:`, e.message);
-                await sleep(5000);
-            }
-        }
-    }
-
-    async function openBoxLoop() {
-        while (!accountState.isTerminated) {
-            try {
-                console.log(`[${botName}] 📦 إرسال أمر الفتح الدوري في قناة الفحص...`);
-                await safeSend(client, CHECK_ROOM_ID, '!مد صندوق فتح', acc.name);
-                await sleep(500000);
-            } catch (e) {
-                console.error(`[${botName}] ❌ خطأ في دورة الفتح الدوري:`, e.message);
-                await sleep(5000);
-            }
-        }
-    }
-
-    async function checkLoop() {
-        while (!accountState.isTerminated) {
-            try {
-                const waitSeconds = globalTimer > 0 ? globalTimer : 300;
-
-                console.log(`[${botName}] ⏳ انتظار ${waitSeconds} ثانية حتى فحص الجهاز الزمني...`);
-                await sleep(waitSeconds * 1000);
-
-                console.log(`[${botName}] 🔁 انتهى المؤقت، جاري إرسال !مد صندوق لفحص الضمان والجهاز...`);
-                await sendBoxCommand();
-
-            } catch (e) {
-                console.error(`[${botName}] ❌ خطأ في دورة الفحص:`, e.message);
-                await sleep(5000);
-            }
-        }
-    }
-
-    async function stealLoop() {
-        if (!STEAL_ROOM_ID || Number(STEAL_ROOM_ID) <= 0) {
-            console.log(`[${botName}] ⚠️ لم يتم ضبط غرفة السرقة STEAL_ROOM.channelId، تم تخطي دورة السرقة.`);
-            return;
-        }
-
-        while (!accountState.isTerminated) {
-            try {
-                console.log(`[${botName}] 🥷 إرسال أمر السرقة في غرفة السرقة...`);
-                await safeSend(client, STEAL_ROOM_ID, '!مد سرقة 36350736', acc.name);
-
-                await sleep((30 * 60 * 1000) + 3000);
-
-            } catch (e) {
-                console.error(`[${botName}] ❌ خطأ في دورة السرقة:`, e.message);
-                await sleep(5000);
-            }
-        }
-    }
-
-    client.on('ready', async () => {
-        console.log(`✅ الحساب [${botName}] شبك بنجاح! اللعب في [${PLAY_CHANNEL_ID}] | الفحص في [${CHECK_ROOM_ID}]`);
-
-        try {
-            console.log(`[${botName}] 🚀 بدء تنفيذ تسلسل أوامر التشغيل...`);
-
-            if (!isMainLoopStarted) {
-                isMainLoopStarted = true;
-                mainActionLoop();
-            }
-
-            if (!isOpenBoxLoopStarted) {
-                isOpenBoxLoopStarted = true;
-                openBoxLoop();
-            }
-
-            if (!isCheckLoopStarted) {
-                isCheckLoopStarted = true;
-                checkLoop();
-            }
-
-            if (!isStealLoopStarted) {
-                isStealLoopStarted = true;
-                stealLoop();
-            }
-
-            if (!isInitialBoxCheckStarted) {
-                isInitialBoxCheckStarted = true;
-                sendBoxCommand().catch(err => {
-                    console.error(`[${botName}] خطأ في فحص الصناديق الأولي:`, err.message);
-                });
-            }
-
-            setTimeout(async () => {
-                console.log(`[${botName}] 🛑 مضت 5 ساعات و 58 دقيقة! إرسال أمر الإيقاف...`);
-
-                accountState.isTerminated = true;
-
-                try {
-                    await safeSend(client, CHECK_ROOM_ID, '!مد ايقاف', acc.name);
-                } catch (stopErr) {
-                    console.error(`[${botName}] خطأ أثناء إرسال أمر الإيقاف:`, stopErr.message);
-                }
-            }, 21480000);
-
-        } catch (err) {
-            console.error(`[${botName}] ❌ خطأ تهيئة البوت:`, err.message);
-        }
+function getFirstActiveIndex() {
+  const sorted = [...ACTIVE_RACE_ACCOUNTS].sort((a, b) => a - b);
+  return sorted.length > 0 ? sorted[0] : null;
+}
+
+function getNextActiveIndex(currentIndex) {
+  const sorted = [...ACTIVE_RACE_ACCOUNTS].sort((a, b) => a - b);
+  if (sorted.length === 0) return null;
+  const next = sorted.find(index => index > currentIndex);
+  return next ?? sorted[0];
+}
+
+// =========================================================================
+// 🛠️ 4. أدوات المعالجة واستخراج البيانات
+// =========================================================================
+function getSenderId(message) {
+  return Number(
+    message.sourceSubscriberId || message.sourceUserId ||
+    message.sourceId || message.senderId || message.userId || 0
+  );
+}
+
+function getMessageText(message) {
+  return (message.body || message.content || message.text || message.message || '').toString().trim();
+}
+
+function getRoomId(message) {
+  return Number(
+    message.targetChannelId || message.targetGroupId || message.groupId ||
+    message.channelId || message.recipientGroupId || message.group?.id || message.channel?.id || 0
+  );
+}
+
+function cleanText(text) {
+  return String(text || '').replace(/[\u200B-\u200F\uFEFF\u2060]/g, '').trim();
+}
+
+function isEnergyReadyMessage(text) {
+  const body = cleanText(text).toLowerCase();
+  return (
+    body.includes('your animal is back to full energy') ||
+    body.includes('animal is back to full energy') ||
+    body.includes('عاد حيوانك لطاقته الكاملة') ||
+    body.includes('عاد حيوانك إلى طاقته الكاملة') ||
+    body.includes('طاقته الكاملة') ||
+    body.includes('full energy')
+  );
+}
+
+function extractLastIdFromRaceMessage(body) {
+  const cleanBody = cleanText(body);
+  const ids = [...cleanBody.matchAll(/\((\d+)\)/g)];
+  if (ids.length === 0) return null;
+  return ids[ids.length - 1][1];
+}
+
+function extractRoomIdFromBonus(text = "") {
+  const cleaned = cleanText(text).replace(/\s+/g, ' ');
+  let match = cleaned.match(/\(ID\s*(\d+)\)/i);
+  if (!match) match = cleaned.match(/\((\d+)\)/);
+  if (!match) match = cleaned.match(/\b(\d{3,})\b/);
+  return match ? Number(match[1]) : null;
+}
+
+function extractSenderIdFromBonus(text = "") {
+  const cleaned = cleanText(text).replace(/\s+/g, ' ');
+  const matches = [...cleaned.matchAll(/\(ID\s*(\d+)\)|\((\d+)\)/gi)];
+  if (matches.length < 2) return null;
+  const last = matches[matches.length - 1];
+  return Number(last[1] || last[2]);
+}
+
+function isBonusMessage(content = "") {
+  return (
+    /Bonus-/i.test(content) ||
+    content.includes("معزز") ||
+    content.includes("معزز إضافي")
+  );
+}
+
+// =========================================================================
+// 🛡️ 5. طابور الإرسال الآمن (SafeQueue)
+// =========================================================================
+class SafeQueue {
+  constructor() {
+    this.queue = [];
+    this.isProcessing = false;
+  }
+
+  async add(client, channelId, command, accountName = 'UNKNOWN') {
+    return new Promise((resolve) => {
+      this.queue.push({ client, channelId, command, accountName, resolve });
+      this.process();
     });
+  }
 
-    client.login(acc.email, acc.password);
+  async process() {
+    if (this.isProcessing || this.queue.length === 0) return;
+    this.isProcessing = true;
+
+    const { client, channelId, command, accountName, resolve } = this.queue.shift();
+    let success = false;
+
+    try {
+      if (typeof client.messaging.sendChannelMessage === 'function') {
+        await client.messaging.sendChannelMessage(Number(channelId), command);
+      } else {
+        await client.messaging.sendGroupMessage(Number(channelId), command);
+      }
+      console.log(`📤 [${accountName}] ${command}`);
+      success = true;
+      await sleep(2000);
+    } catch (err) {
+      console.error(`❌ [${accountName}] خطأ إرسال: ${err.message}`);
+    }
+
+    this.isProcessing = false;
+    resolve(success);
+    this.process();
+  }
 }
 
-// ================== START ==================
+const globalQueue = new SafeQueue();
 
-ACCOUNTS.forEach((acc, i) => {
-    const playerName = acc.allowedPlayers[0];
-    const roomSettings = specialUsersSet.has(playerName) ? SECOND_ROOM : MAIN_ROOM;
+// =========================================================================
+// 🚦 6. مدير سباق الحصان (RaceManager)
+// =========================================================================
+class RaceManager {
+  constructor() {
+    this.currentTurnIndex = 1;
+    this.clientsMap = new Map();
+    this.accountStates = new Map();
+    this.isRaceRunning = false;
+    this.activeRaceIndex = null;
+    this.lastRaceId = null;
+    this.lastRaceTime = 0;
+    this.hasStarted = false;
+    this.raceWatchdog = null;
+    this.energyWaitTimer = null;
+    this.energyWaitIndex = null;
+  }
 
-    const finalConfig = {
-        ...acc,
-        channelId: roomSettings.channelId,
-        targetUserId: roomSettings.targetUserId
-    };
+  registerClient(index, config, client, triggerFunc) {
+    this.clientsMap.set(index, { config, client, triggerFunc });
 
-    setTimeout(() => {
-        createBot(finalConfig);
-    }, i * 10000);
+    if (!this.accountStates.has(index)) {
+      this.accountStates.set(index, {
+        energyReady: true,
+        inRace: false,
+        lastStartedAt: 0,
+        lastFinishedAt: 0
+      });
+    }
+
+    if (this.hasStarted && !this.isRaceRunning && this.currentTurnIndex === index) {
+      this.tryStartCurrentTurn();
+    }
+  }
+
+  getState(index) {
+    if (!this.accountStates.has(index)) {
+      this.accountStates.set(index, {
+        energyReady: true,
+        inRace: false,
+        lastStartedAt: 0,
+        lastFinishedAt: 0
+      });
+    }
+    return this.accountStates.get(index);
+  }
+
+  start() {
+    if (this.hasStarted) return;
+    const firstActiveIndex = getFirstActiveIndex();
+    if (firstActiveIndex === null) return;
+    this.hasStarted = true;
+    this.currentTurnIndex = firstActiveIndex;
+    console.log(`🚀 بدء نظام سباق الحصان من الحساب رقم ${firstActiveIndex}.`);
+    this.tryStartCurrentTurn();
+  }
+
+  clearRaceWatchdog() {
+    if (this.raceWatchdog) {
+      clearTimeout(this.raceWatchdog);
+      this.raceWatchdog = null;
+    }
+  }
+
+  startRaceWatchdog(index) {
+    this.clearRaceWatchdog();
+    this.raceWatchdog = setTimeout(() => {
+      if (this.isRaceRunning && this.activeRaceIndex === index) {
+        const bot = this.clientsMap.get(index);
+        const state = this.getState(index);
+
+        console.log(`⚠️ لم تصل رسالة انتهاء السباق لـ ${bot?.config?.name || index}، الانتقال للحساب التالي.`);
+
+        state.inRace = false;
+        state.energyReady = false;
+        state.lastFinishedAt = Date.now();
+
+        this.isRaceRunning = false;
+        this.activeRaceIndex = null;
+
+        const nextActiveIndex = getNextActiveIndex(index);
+        if (nextActiveIndex === null) return;
+
+        this.currentTurnIndex = nextActiveIndex;
+        this.tryStartCurrentTurn();
+      }
+    }, RACE_END_TIMEOUT_MS);
+  }
+
+  clearEnergyWaitTimer() {
+    if (this.energyWaitTimer) {
+      clearTimeout(this.energyWaitTimer);
+      this.energyWaitTimer = null;
+    }
+    this.energyWaitIndex = null;
+  }
+
+  scheduleEnergyFallback(index, remainingMs) {
+    this.clearEnergyWaitTimer();
+    this.energyWaitIndex = index;
+
+    this.energyWaitTimer = setTimeout(() => {
+      if (this.isRaceRunning || this.currentTurnIndex !== index || this.energyWaitIndex !== index) return;
+
+      const bot = this.clientsMap.get(index);
+      const state = this.getState(index);
+
+      state.energyReady = true;
+      this.energyWaitTimer = null;
+      this.energyWaitIndex = null;
+
+      console.log(`✅ [طاقة احتياطية] تم اعتبار ${bot?.config?.name || index} جاهزاً.`);
+      this.tryStartCurrentTurn();
+    }, Math.max(0, remainingMs));
+  }
+
+  async tryStartCurrentTurn() {
+    if (this.isRaceRunning) return;
+
+    const turnIndex = this.currentTurnIndex;
+    const currentBot = this.clientsMap.get(turnIndex);
+
+    if (!currentBot) {
+      const nextActive = getNextActiveIndex(turnIndex);
+      if (nextActive === null) return;
+      this.currentTurnIndex = nextActive;
+      return this.tryStartCurrentTurn();
+    }
+
+    const state = this.getState(turnIndex);
+
+    if (!state.energyReady) {
+      if (state.lastFinishedAt > 0) {
+        const elapsed = Date.now() - state.lastFinishedAt;
+        const remaining = ENERGY_FALLBACK_MS - elapsed;
+
+        if (remaining <= 0) {
+          state.energyReady = true;
+        } else {
+          this.scheduleEnergyFallback(turnIndex, remaining);
+          return;
+        }
+      } else {
+        return;
+      }
+    }
+
+    if (state.inRace) return;
+
+    this.clearEnergyWaitTimer();
+    state.energyReady = false;
+    state.inRace = true;
+    state.lastStartedAt = Date.now();
+
+    this.isRaceRunning = true;
+    this.activeRaceIndex = turnIndex;
+
+    console.log(`🎯 [${currentBot.config.name}] حان دوري في السباق...`);
+    const sent = await currentBot.triggerFunc();
+
+    if (!sent) {
+      state.inRace = false;
+      state.energyReady = true;
+      this.isRaceRunning = false;
+      this.activeRaceIndex = null;
+      return;
+    }
+
+    this.startRaceWatchdog(turnIndex);
+  }
+
+  handleEnergyReady(accountIndex) {
+    const bot = this.clientsMap.get(accountIndex);
+    const state = this.getState(accountIndex);
+
+    if (state.energyReady) return;
+    state.energyReady = true;
+
+    console.log(`🔋 [${bot?.config?.name || accountIndex}] استعاد الطاقة وصار جاهزاً.`);
+
+    if (!this.isRaceRunning && accountIndex === this.currentTurnIndex) {
+      this.clearEnergyWaitTimer();
+      this.tryStartCurrentTurn();
+    }
+  }
+
+  async handleRaceEndMessage(body) {
+    body = cleanText(body);
+    if (!body.includes('انتهى السباق')) return;
+
+    const extractedId = extractLastIdFromRaceMessage(body);
+    if (!extractedId) return;
+
+    const now = Date.now();
+    if (this.lastRaceId === extractedId && now - this.lastRaceTime < 5000) return;
+
+    const finishedBot = [...this.clientsMap.values()].find(
+      bot => String(bot.config.id) === String(extractedId)
+    );
+
+    if (!finishedBot) return;
+
+    const finishedIndex = finishedBot.config.index;
+    if (this.activeRaceIndex !== finishedIndex) return;
+
+    this.lastRaceId = extractedId;
+    this.lastRaceTime = now;
+
+    const finishedState = this.getState(finishedIndex);
+    finishedState.inRace = false;
+    finishedState.energyReady = false;
+    finishedState.lastFinishedAt = Date.now();
+
+    console.log(`🏁 [السباق] الحساب ${finishedBot.config.name} أنهى السباق.`);
+
+    this.clearRaceWatchdog();
+    this.isRaceRunning = false;
+    this.activeRaceIndex = null;
+
+    const nextActiveIndex = getNextActiveIndex(finishedIndex);
+    if (nextActiveIndex === null) return;
+
+    this.currentTurnIndex = nextActiveIndex;
+    this.tryStartCurrentTurn();
+  }
+}
+
+const raceManager = new RaceManager();
+
+// =========================================================================
+// 🎮 7. محرك لعبة XO
+// =========================================================================
+const WINNING_COMBOS = [
+  [0, 1, 2], [3, 4, 5], [6, 7, 8],
+  [0, 3, 6], [1, 4, 7], [2, 5, 8],
+  [0, 4, 8], [2, 4, 6]
+];
+
+function getBestXOMove(board, mySign, botSign) {
+  const availableMoves = [];
+  for (let i = 0; i < 9; i++) if (board[i] === null) availableMoves.push(i);
+  if (availableMoves.length === 0) return undefined;
+
+  for (let combo of WINNING_COMBOS) {
+    let myCount = combo.filter(i => board[i] === mySign).length;
+    let emptyCount = combo.filter(i => board[i] === null).length;
+    if (myCount === 2 && emptyCount === 1) return combo.find(i => board[i] === null);
+  }
+
+  for (let combo of WINNING_COMBOS) {
+    let botCount = combo.filter(i => board[i] === botSign).length;
+    let emptyCount = combo.filter(i => board[i] === null).length;
+    if (botCount === 2 && emptyCount === 1) return combo.find(i => board[i] === null);
+  }
+
+  if (board[4] === null && availableMoves.includes(4)) return 4;
+
+  const corners = [0, 2, 6, 8].filter(i => board[i] === null);
+  if (corners.length > 0) return corners[Math.floor(Math.random() * corners.length)];
+
+  return availableMoves[Math.floor(Math.random() * availableMoves.length)];
+}
+
+// =========================================================================
+// 🤖 8. إنشاء الحسابات وإدارة المهام (Bot Instance)
+// =========================================================================
+function createBot(config) {
+  const client = new WOLF();
+
+  // ----- متغيرات المعززات وتطبيق الكود الخاص بك -----
+  let bonusQueue = [];
+  let bonusQueueSet = new Set();
+  let isBonusProcessing = false;
+  let isBonusResting = false;
+
+  function addToBonusQueue(roomId, command) {
+    if (!roomId || !command) return;
+    const itemKey = `${roomId}:${command}`;
+    if (bonusQueueSet.has(itemKey)) return;
+
+    bonusQueueSet.add(itemKey);
+    bonusQueue.unshift({ roomId, command, key: itemKey });
+  }
+
+  async function processBonusQueue() {
+    if (isBonusProcessing) return;
+    isBonusProcessing = true;
+
+    while (bonusQueue.length > 0) {
+      if (isBonusResting) break;
+
+      const item = bonusQueue.shift();
+      bonusQueueSet.delete(item.key);
+
+      try {
+        if (client.groups?.join) await client.groups.join(item.roomId);
+        else if (client.group?.join) await client.group.join(item.roomId);
+        else if (client.joinGroup) await client.joinGroup(item.roomId);
+
+        await client.messaging.sendGroupMessage(item.roomId, item.command);
+        console.log(`🚀 [حساب ${config.index}] دخل ${item.roomId} وأرسل: ${item.command}`);
+
+      } catch (err) {
+        console.log(`❌ [حساب ${config.index}] خطأ: ${err.message}`);
+      }
+
+      await sleep(BONUS_DELAY);
+    }
+
+    isBonusProcessing = false;
+  }
+
+  async function startBonusCycle() {
+    while (true) {
+      console.log(`🟢 [حساب ${config.index}] تشغيل 54 دقيقة`);
+      isBonusResting = false;
+
+      processBonusQueue();
+
+      await sleep(WORK_TIME);
+
+      console.log(`🛑 [حساب ${config.index}] راحة 6 دقائق`);
+      isBonusResting = true;
+
+      await sleep(REST_TIME);
+    }
+  }
+
+  // ----- متغيرات XO -----
+  let xoBoard = Array(9).fill(null);
+  let xoMySign = 'X';
+  let xoBotSign = 'O';
+  let xoIsGameEnding = false;
+  let xoIsSending = false;
+
+  function handleXOIncomingData(message) {
+    const text = getMessageText(message).toLowerCase();
+
+    if (text.includes('won') || text.includes('lost') || text.includes('tie') || text.includes('draw') || text.includes('تعادل') || text.includes('rematch') || text.includes('game over')) {
+      if (!xoIsGameEnding) {
+        xoIsGameEnding = true;
+        xoIsSending = false;
+        console.log(`🏁 [${config.name}] انتهاء لعبة XO، إعادة البدء بعد 5 ثوانٍ...`);
+        xoBoard = Array(9).fill(null);
+
+        setTimeout(async () => {
+          try { await client.messaging.sendGroupMessage(XO_ROOM_ID, XO_START_COMMAND); } catch (e) {}
+          xoIsGameEnding = false;
+        }, 5000);
+      }
+      return;
+    }
+
+    if (text.includes('your turn! (❌)') || text.includes('turn! (❌)')) { xoMySign = 'X'; xoBotSign = 'O'; }
+    else if (text.includes('your turn! (⭕)') || text.includes('turn! (⭕)')) { xoMySign = 'O'; xoBotSign = 'X'; }
+
+    const positions = text.split('xobot-mp-private__content__middle__position');
+    if (positions.length > 1) {
+      for (let i = 0; i < 9; i++) {
+        const block = positions[i + 1] || '';
+        if (block.includes('--x') || block.includes('❌')) xoBoard[i] = 'X';
+        else if (block.includes('--o') || block.includes('⭕')) xoBoard[i] = 'O';
+        else xoBoard[i] = null;
+      }
+    }
+
+    const isMyTurn = text.includes('your turn') || text.includes('turn');
+    if (isMyTurn && !xoIsGameEnding && !xoIsSending) {
+      const moveIndex = getBestXOMove(xoBoard, xoMySign, xoBotSign);
+      if (moveIndex !== undefined && moveIndex !== -1) {
+        const squareToPlay = (moveIndex + 1).toString();
+        xoIsSending = true;
+        xoBoard[moveIndex] = xoMySign;
+
+        setTimeout(async () => {
+          try {
+            await client.messaging.sendPrivateMessage(XO_BOT_ID, squareToPlay);
+            console.log(`✅ [${config.name}] XO لعب الخانة: ${squareToPlay}`);
+          } catch (e) {}
+          setTimeout(() => { xoIsSending = false; }, 800);
+        }, 1000);
+      }
+    }
+  }
+
+  // ----- دالة إرسال أمر السباق -----
+  async function triggerRaceCommand() {
+    const subId = config.id || client.currentSubscriber?.id || client.currentUser?.id;
+    return await globalQueue.add(
+      client,
+      config.sChannel,
+      `!س جلد خاص ${subId}`,
+      config.name
+    );
+  }
+
+  // ----- معالجة كافة الرسائل الواردة -----
+  async function handleIncomingMessage(message) {
+    try {
+      const senderId = getSenderId(message);
+      const roomId = getRoomId(message);
+      let body = getMessageText(message);
+      if (!body) return;
+
+      // 1. سباق الحصان
+      if (senderId === Number(TRACKED_BOT_ID)) {
+        const cleanedBody = cleanText(body);
+        if (isEnergyReadyMessage(cleanedBody)) {
+          raceManager.handleEnergyReady(config.index);
+          return;
+        }
+        if (roomId === Number(RACE_ROOM_ID) && cleanedBody.includes('انتهى السباق')) {
+          await raceManager.handleRaceEndMessage(cleanedBody);
+        }
+      }
+
+      // 2. XO
+      if (!message.isGroup && senderId === XO_BOT_ID && XO_ACCOUNTS.includes(config.index)) {
+        handleXOIncomingData(message);
+      }
+
+      // 3. المعززات (البونص) - تطبيق كودك الصريح
+      if (!message.isGroup && isBonusMessage(body)) {
+        const bonusRoomId = extractRoomIdFromBonus(body);
+        if (!bonusRoomId) return;
+
+        const bonusSenderId = extractSenderIdFromBonus(body);
+
+        // البحث عن كل أمر مخصص للحساب الحالي وإضافته للطابور
+        BOT_TRIGGERS.forEach(trigger => {
+          if (trigger.accounts.includes(config.index)) {
+            console.log(`📥 [حساب ${config.index}] غرفة: ${bonusRoomId} | صاحب المعزز: ${bonusSenderId || 'عام'} | الأمر: ${trigger.command}`);
+            addToBonusQueue(bonusRoomId, trigger.command);
+          }
+        });
+
+        if (!isBonusResting) {
+          processBonusQueue();
+        }
+      }
+    } catch (err) {
+      console.error(`❌ [${config.name}] خطأ استقبال: ${err.message}`);
+    }
+  }
+
+  client.on('message', handleIncomingMessage);
+  client.on('groupMessage', handleIncomingMessage);
+
+  // ----- عند جاهزية الاتصال -----
+  client.on('ready', () => {
+    console.log(`✅ الحساب ${config.index} جاهز`);
+
+    // أ) التسجيل بالسباق
+    if (isAccountActive(config.index)) {
+      raceManager.registerClient(config.index, config, client, triggerRaceCommand);
+      if (config.index === getFirstActiveIndex()) {
+        setTimeout(() => raceManager.start(), 5000);
+      }
+    }
+
+    // ب) تشغيل دورة المعززات للحسابات المخصصة
+    const isAssignedToBonus = BOT_TRIGGERS.some(t => t.accounts.includes(config.index));
+    if (isAssignedToBonus) {
+      startBonusCycle();
+    }
+
+    // ج) لعبة XO
+    if (XO_ACCOUNTS.includes(config.index)) {
+      setTimeout(async () => {
+        try {
+          await client.messaging.sendGroupMessage(XO_ROOM_ID, XO_START_COMMAND);
+          console.log(`🎮 [${config.name}] بدأ لعبة XO في الروم ${XO_ROOM_ID}`);
+        } catch (e) {}
+      }, 3000);
+    }
+
+    // د) القراند
+    if (GRAND_COLLECT_ACCOUNTS.includes(config.index)) {
+      setInterval(async () => {
+        try { await globalQueue.add(client, GRAND_ROOM_ID, '!جمع', config.name); } catch (e) {}
+      }, 70 * 1000);
+    }
+
+    // هـ) الطائرة
+    if (AIRPLANE_ACCOUNTS.includes(config.index)) {
+      setInterval(async () => {
+        try { await globalQueue.add(client, AIRPLANE_ROOM_ID, '!طائرة 5', config.name); } catch (e) {}
+      }, 90 * 1000);
+    }
+  });
+
+  // تسجيل الدخول
+  try {
+    const loginResult = client.login(config.email, config.password);
+    if (loginResult && typeof loginResult.catch === 'function') {
+      loginResult.catch((err) => {
+        console.error(`❌ [${config.name}] فشل تسجيل الدخول: ${err.message}`);
+      });
+    }
+  } catch (err) {
+    console.error(`❌ [${config.name}] خطأ تسجيل الدخول: ${err.message}`);
+  }
+}
+
+// =========================================================================
+// 🚀 9. تشغيل الحسابات بالتتابع (فاصل 4 ثوانٍ)
+// =========================================================================
+let loginOrder = 0;
+
+ACCOUNTS.forEach((account) => {
+  if (!account.email || !account.password) {
+    return;
+  }
+
+  setTimeout(() => createBot(account), loginOrder * 4000);
+  loginOrder++;
 });
