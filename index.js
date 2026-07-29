@@ -1,4 +1,15 @@
+import 'dotenv/config';
 
+process.env.SUPPRESS_NO_CONFIG_WARNING = 'true';
+
+// =========================================================================
+// 🧹 1. تنظيف وفلترة سجلات الكونسول (Console Logs)
+// =========================================================================
+const originalLog = console.log.bind(console);
+const originalWarn = console.warn.bind(console);
+const originalError = console.error.bind(console);
+
+const HIDE_LOGS = [
   '[DEBUG]', '[WARN]', 'DEBUG', 'WARN', 'CleanUp', 'Synchronise',
   'GroupAudioCountUpdated', 'MessageUpdate', 'Websocket', 'TipAdd',
   'Message from self ignoring', 'Store Reset', 'apiKey will be required',
@@ -72,11 +83,15 @@ const ACCOUNTS = [
   { email: process.env.U_MAIL_12, password: process.env.U_PASS_12, name: 'NOR', id: 2374823, index: 12, sChannel: 569 }
 ];
 
-// 🎯 تخصيص تفاعلات الألعاب
+// 🎯 تخصيص تفاعلات الألعاب (أرقام الحسابات index)
 const ACTIVE_RACE_ACCOUNTS      = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 const AIRPLANE_ACCOUNTS         = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-const GRAND_COLLECT_ACCOUNTS    = [1, 2, 3, 4];
 const XO_ACCOUNTS                = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+// 🎮 تخصيص حسابات قراند
+const GRAND_COLLECT_ACCOUNTS       = [1, 2, 3, 4];
+const GRAND_STEAL_ATTACK_COUNTS    = [1, 2, 3, 4];
+const GRAND_LOTTERY_ACCOUNTS       = [1, 2, 3, 4];
 
 // 🎁 تحديد الحسابات والأوامر المخصصة للمعززات
 const BONUS_ACCOUNTS_STEAL  = [];
@@ -90,6 +105,14 @@ const BOT_TRIGGERS = [
   { command: "!صياد 3", accounts: 76305584 },
   { command: "!صيد 3",  accounts: 32060007 }
 ];
+
+function isAccountInTrigger(trigger, config) {
+  if (!trigger || !trigger.accounts) return false;
+  if (Array.isArray(trigger.accounts)) {
+    return trigger.accounts.includes(config.index) || trigger.accounts.includes(config.id);
+  }
+  return trigger.accounts === config.index || trigger.accounts === config.id;
+}
 
 function isAccountActive(index) {
   return ACTIVE_RACE_ACCOUNTS.includes(Number(index));
@@ -108,7 +131,150 @@ function getNextActiveIndex(currentIndex) {
 }
 
 // =========================================================================
-// 🛠️ 4. أدوات المعالجة واستخراج البيانات
+// 🏢 4. نظام ومدير دورات قراند المركزي
+// =========================================================================
+const grandStealCycleCounter = new Map();
+const GRAND_ACCOUNT_GAP_MS = 15 * 1000;
+const GRAND_COMMAND_GAP_MS = 10 * 1000;
+const GRAND_COLLECT_INTERVAL_MS = 70 * 1000;
+const GRAND_STEAL_ATTACK_INTERVAL_MS = 130 * 1000;
+const GRAND_LOTTERY_INTERVAL_MS = 65 * 1000;
+const GRAND_LOTTERY_NUMBER_DELAY_MS = 10 * 1000;
+
+const GRAND_BOTS = new Map();
+let grandSchedulersStarted = false;
+
+function registerGrandBot(index, name, send, isTerminated) {
+  const accountIndex = Number(index);
+  const oldBot = GRAND_BOTS.get(accountIndex);
+
+  GRAND_BOTS.set(accountIndex, {
+    index: accountIndex,
+    name,
+    send,
+    isTerminated,
+    grandQueue: oldBot?.grandQueue || Promise.resolve()
+  });
+}
+
+function getGrandBots(accountIndexes) {
+  return [...new Set(accountIndexes.map(Number))]
+    .sort((a, b) => a - b)
+    .map(index => GRAND_BOTS.get(index))
+    .filter(bot => bot && !bot.isTerminated());
+}
+
+function enqueueGrandTask(bot, taskName, task) {
+  const run = async () => {
+    if (bot.isTerminated()) return false;
+    try {
+      return await task();
+    } catch (error) {
+      console.error(`[قراند] ❌ [${bot.name}] خطأ في ${taskName}:`, error?.message || error);
+      return false;
+    }
+  };
+  bot.grandQueue = bot.grandQueue.then(run, run);
+  return bot.grandQueue;
+}
+
+async function runGrandAccountsInOrder(accountIndexes, taskName, taskFactory) {
+  const bots = getGrandBots(accountIndexes);
+  for (let position = 0; position < bots.length; position++) {
+    const bot = bots[position];
+    await enqueueGrandTask(bot, taskName, () => taskFactory(bot));
+    if (position < bots.length - 1) {
+      await sleep(GRAND_ACCOUNT_GAP_MS);
+    }
+  }
+}
+
+async function grandCollectScheduler() {
+  while (true) {
+    try {
+      await runGrandAccountsInOrder(
+        GRAND_COLLECT_ACCOUNTS,
+        'جمع',
+        bot => bot.send(GRAND_ROOM_ID, '!قراند جمع 5')
+      );
+    } catch (error) {
+      console.error('[قراند جمع] ❌ خطأ في الدورة المركزية:', error?.message || error);
+    }
+    await sleep(GRAND_COLLECT_INTERVAL_MS);
+  }
+}
+
+async function grandStealAttackScheduler() {
+  while (true) {
+    try {
+      await runGrandAccountsInOrder(
+        GRAND_STEAL_ATTACK_COUNTS,
+        'سرقة وهجوم',
+        async bot => {
+          const stealSent = await bot.send(GRAND_ROOM_ID, '!قراند سرقة 5');
+          await sleep(GRAND_COMMAND_GAP_MS);
+
+          if (bot.isTerminated()) return false;
+
+          const attackSent = await bot.send(GRAND_ROOM_ID, '!قراند هجوم 5');
+          if (attackSent) {
+            const cycle = (grandStealCycleCounter.get(bot.index) || 0) + 1;
+            grandStealCycleCounter.set(bot.index, cycle);
+
+            if (cycle >= 3) {
+              grandStealCycleCounter.set(bot.index, 0);
+              await sleep(10000);
+              if (!bot.isTerminated()) {
+                await bot.send(GRAND_ROOM_ID, '!قراند سلاح تجهيز 30');
+              }
+            }
+          }
+          return Boolean(stealSent && attackSent);
+        }
+      );
+    } catch (error) {
+      console.error('[قراند سرقة وهجوم] ❌ خطأ في الدورة المركزية:', error?.message || error);
+    }
+    await sleep(GRAND_STEAL_ATTACK_INTERVAL_MS);
+  }
+}
+
+async function grandLotteryScheduler() {
+  while (true) {
+    try {
+      await runGrandAccountsInOrder(
+        GRAND_LOTTERY_ACCOUNTS,
+        'اليانصيب',
+        async bot => {
+          const lotterySent = await bot.send(GRAND_ROOM_ID, '!قراند يانصيب اسطوري');
+          await sleep(GRAND_LOTTERY_NUMBER_DELAY_MS);
+
+          if (bot.isTerminated()) return false;
+
+          const numberSent = await bot.send(GRAND_ROOM_ID, '5');
+          return Boolean(lotterySent && numberSent);
+        }
+      );
+    } catch (error) {
+      console.error('[قراند يانصيب] ❌ خطأ في الدورة المركزية:', error?.message || error);
+    }
+    await sleep(GRAND_LOTTERY_INTERVAL_MS);
+  }
+}
+
+function startGrandSchedulersOnce() {
+  if (grandSchedulersStarted) return;
+  grandSchedulersStarted = true;
+
+  setTimeout(() => {
+    grandCollectScheduler().catch(err => console.error('[قراند جمع] توقف:', err?.message));
+    grandStealAttackScheduler().catch(err => console.error('[قراند سرقة وهجوم] توقف:', err?.message));
+    grandLotteryScheduler().catch(err => console.error('[قراند يانصيب] توقف:', err?.message));
+  }, 35000);
+}
+
+// =========================================================================
+// 🛠️ 5. أدوات المعالجة واستخراج البيانات
 // =========================================================================
 function getSenderId(message) {
   return Number(
@@ -176,7 +342,7 @@ function isBonusMessage(content = "") {
 }
 
 // =========================================================================
-// 🛡️ 5. طابور الإرسال الآمن (SafeQueue)
+// 🛡️ 6. طابور الإرسال الآمن (SafeQueue)
 // =========================================================================
 class SafeQueue {
   constructor() {
@@ -199,9 +365,9 @@ class SafeQueue {
     let success = false;
 
     try {
-      if (typeof client.messaging.sendChannelMessage === 'function') {
+      if (typeof client.messaging?.sendChannelMessage === 'function') {
         await client.messaging.sendChannelMessage(Number(channelId), command);
-      } else {
+      } else if (typeof client.messaging?.sendGroupMessage === 'function') {
         await client.messaging.sendGroupMessage(Number(channelId), command);
       }
       console.log(`📤 [${accountName}] ${command}`);
@@ -220,7 +386,7 @@ class SafeQueue {
 const globalQueue = new SafeQueue();
 
 // =========================================================================
-// 🚦 6. مدير سباق الحصان (RaceManager)
+// 🚦 7. مدير سباق الحصان (RaceManager)
 // =========================================================================
 class RaceManager {
   constructor() {
@@ -449,7 +615,7 @@ class RaceManager {
 const raceManager = new RaceManager();
 
 // =========================================================================
-// 🎮 7. محرك لعبة XO
+// 🎮 8. محرك لعبة XO
 // =========================================================================
 const WINNING_COMBOS = [
   [0, 1, 2], [3, 4, 5], [6, 7, 8],
@@ -483,12 +649,14 @@ function getBestXOMove(board, mySign, botSign) {
 }
 
 // =========================================================================
-// 🤖 8. إنشاء الحسابات وإدارة المهام (Bot Instance)
+// 🤖 9. إنشاء الحسابات وإدارة المهام (Bot Instance)
 // =========================================================================
 function createBot(config) {
   const client = new WOLF();
 
-  // ----- متغيرات المعززات وتطبيق الكود الخاص بك -----
+  let isAccountTerminated = false;
+
+  // ----- متغيرات المعززات -----
   let bonusQueue = [];
   let bonusQueueSet = new Set();
   let isBonusProcessing = false;
@@ -514,15 +682,16 @@ function createBot(config) {
       bonusQueueSet.delete(item.key);
 
       try {
-        if (client.groups?.join) await client.groups.join(item.roomId);
-        else if (client.group?.join) await client.group.join(item.roomId);
-        else if (client.joinGroup) await client.joinGroup(item.roomId);
+        if (typeof client.group?.joinById === 'function') await client.group.joinById(item.roomId);
+        else if (typeof client.channel?.joinById === 'function') await client.channel.joinById(item.roomId);
+        else if (typeof client.groups?.join === 'function') await client.groups.join(item.roomId);
+        else if (typeof client.group?.join === 'function') await client.group.join(item.roomId);
 
         await client.messaging.sendGroupMessage(item.roomId, item.command);
-        console.log(`🚀 [حساب ${config.index}] دخل ${item.roomId} وأرسل: ${item.command}`);
+        console.log(`🚀 [حساب ${config.index} - ${config.name}] دخل ${item.roomId} وأرسل: ${item.command}`);
 
       } catch (err) {
-        console.log(`❌ [حساب ${config.index}] خطأ: ${err.message}`);
+        console.log(`❌ [حساب ${config.index} - ${config.name}] خطأ معزز: ${err.message}`);
       }
 
       await sleep(BONUS_DELAY);
@@ -533,14 +702,14 @@ function createBot(config) {
 
   async function startBonusCycle() {
     while (true) {
-      console.log(`🟢 [حساب ${config.index}] تشغيل 54 دقيقة`);
+      console.log(`🟢 [حساب ${config.index} - ${config.name}] تشغيل 54 دقيقة معززات`);
       isBonusResting = false;
 
       processBonusQueue();
 
       await sleep(WORK_TIME);
 
-      console.log(`🛑 [حساب ${config.index}] راحة 6 دقائق`);
+      console.log(`🛑 [حساب ${config.index} - ${config.name}] راحة 6 دقائق معززات`);
       isBonusResting = true;
 
       await sleep(REST_TIME);
@@ -615,6 +784,56 @@ function createBot(config) {
     );
   }
 
+  // ----- دالة إرسال آمنة خاصة بقراند -----
+  async function safeSendGrand(roomId, command) {
+    try {
+      if (typeof client.messaging?.sendChannelMessage === 'function') {
+        await client.messaging.sendChannelMessage(Number(roomId), command);
+      } else if (typeof client.messaging?.sendGroupMessage === 'function') {
+        await client.messaging.sendGroupMessage(Number(roomId), command);
+      }
+      console.log(`🧢 [${config.name}] ${command}`);
+      await sleep(2000);
+      return true;
+    } catch (err) {
+      console.error(`❌ [${config.name}] خطأ إرسال قراند: ${err.message}`);
+      return false;
+    }
+  }
+
+  // ----- دورة الطائرة المحدثة من الكود الثاني -----
+  async function startAirplaneLoop() {
+    while (!isAccountTerminated) {
+      const cycleStartedAt = Date.now();
+
+      try {
+        await globalQueue.add(client, AIRPLANE_ROOM_ID, '!ط قصف', config.name);
+        if (isAccountTerminated) break;
+
+        if (config.index === 1) {
+          await sleep(2000);
+          await globalQueue.add(client, AIRPLANE_ROOM_ID, '!ط هدية 20300554 2000', config.name);
+
+          // بعد الهدية بـ7 ثوانٍ: إيداع الخزينة
+          await sleep(7000);
+          await globalQueue.add(client, AIRPLANE_ROOM_ID, '!ط خزينة إيداع كل', config.name);
+
+          // الهجوم بعد 3 ثوانٍ إضافية (مجموع 10 ثوانٍ من الهدية)
+          await sleep(3000);
+          await globalQueue.add(client, AIRPLANE_ROOM_ID, '!ط هجوم 20300554', config.name);
+        } else {
+          await sleep(2000);
+          await globalQueue.add(client, AIRPLANE_ROOM_ID, '!ط هدية 38770375 2000', config.name);
+        }
+      } catch (error) {
+        console.error(`❌ [${config.name}] خطأ في دورة الطائرة:`, error?.message || error);
+      }
+
+      const elapsed = Date.now() - cycleStartedAt;
+      await sleep(Math.max(1000, (8 * 60 * 1000) - elapsed));
+    }
+  }
+
   // ----- معالجة كافة الرسائل الواردة -----
   async function handleIncomingMessage(message) {
     try {
@@ -640,17 +859,16 @@ function createBot(config) {
         handleXOIncomingData(message);
       }
 
-      // 3. المعززات (البونص) - تطبيق كودك الصريح
+      // 3. المعززات (البونص)
       if (!message.isGroup && isBonusMessage(body)) {
         const bonusRoomId = extractRoomIdFromBonus(body);
         if (!bonusRoomId) return;
 
         const bonusSenderId = extractSenderIdFromBonus(body);
 
-        // البحث عن كل أمر مخصص للحساب الحالي وإضافته للطابور
         BOT_TRIGGERS.forEach(trigger => {
-          if (trigger.accounts.includes(config.index)) {
-            console.log(`📥 [حساب ${config.index}] غرفة: ${bonusRoomId} | صاحب المعزز: ${bonusSenderId || 'عام'} | الأمر: ${trigger.command}`);
+          if (isAccountInTrigger(trigger, config)) {
+            console.log(`📥 [حساب ${config.index} - ${config.name}] غرفة: ${bonusRoomId} | صاحب المعزز: ${bonusSenderId || 'عام'} | الأمر: ${trigger.command}`);
             addToBonusQueue(bonusRoomId, trigger.command);
           }
         });
@@ -669,7 +887,7 @@ function createBot(config) {
 
   // ----- عند جاهزية الاتصال -----
   client.on('ready', () => {
-    console.log(`✅ الحساب ${config.index} جاهز`);
+    console.log(`✅ الحساب ${config.index} (${config.name}) جاهز`);
 
     // أ) التسجيل بالسباق
     if (isAccountActive(config.index)) {
@@ -680,7 +898,7 @@ function createBot(config) {
     }
 
     // ب) تشغيل دورة المعززات للحسابات المخصصة
-    const isAssignedToBonus = BOT_TRIGGERS.some(t => t.accounts.includes(config.index));
+    const isAssignedToBonus = BOT_TRIGGERS.some(t => isAccountInTrigger(t, config));
     if (isAssignedToBonus) {
       startBonusCycle();
     }
@@ -695,18 +913,26 @@ function createBot(config) {
       }, 3000);
     }
 
-    // د) القراند
-    if (GRAND_COLLECT_ACCOUNTS.includes(config.index)) {
-      setInterval(async () => {
-        try { await globalQueue.add(client, GRAND_ROOM_ID, '!جمع', config.name); } catch (e) {}
-      }, 70 * 1000);
+    // د) تسجيل الحساب في مدير قراند المركزي
+    if (
+      GRAND_COLLECT_ACCOUNTS.includes(config.index) ||
+      GRAND_STEAL_ATTACK_COUNTS.includes(config.index) ||
+      GRAND_LOTTERY_ACCOUNTS.includes(config.index)
+    ) {
+      registerGrandBot(
+        config.index,
+        config.name,
+        safeSendGrand,
+        () => isAccountTerminated
+      );
+      startGrandSchedulersOnce();
     }
 
-    // هـ) الطائرة
+    // هـ) تشغيل دورة الطائرة المطورة
     if (AIRPLANE_ACCOUNTS.includes(config.index)) {
-      setInterval(async () => {
-        try { await globalQueue.add(client, AIRPLANE_ROOM_ID, '!طائرة 5', config.name); } catch (e) {}
-      }, 90 * 1000);
+      startAirplaneLoop().catch(err => {
+        console.error(`❌ [${config.name}] خطأ في حلقة الطائرة:`, err?.message);
+      });
     }
   });
 
@@ -724,7 +950,7 @@ function createBot(config) {
 }
 
 // =========================================================================
-// 🚀 9. تشغيل الحسابات بالتتابع (فاصل 4 ثوانٍ)
+// 🚀 10. تشغيل الحسابات بالتتابع (فاصل 4 ثوانٍ)
 // =========================================================================
 let loginOrder = 0;
 
