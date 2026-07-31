@@ -934,10 +934,12 @@ if (XO_ACCOUNTS.includes(config.index)) {
         try {
             console.log(`🎮 [${config.name}] جاري إرسال أمر البداية...`);
 
-            await client.messaging.sendGroupMessage(
-                XO_ROOM_ID,
-                XO_START_COMMAND
-            );
+           await globalQueue.add(
+    client,
+    XO_ROOM_ID,
+    XO_START_COMMAND,
+    config.name
+);
 
             console.log(`✅ [${config.name}] تم إرسال أمر البداية`);
         } catch (e) {
