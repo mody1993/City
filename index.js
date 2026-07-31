@@ -747,8 +747,12 @@ console.log("Messaging methods:", Object.keys(client.messaging));
   let xoIsGameEnding = false;
   let xoIsSending = false;
 
-  function handleXOIncomingData(message) {
-    const text = getMessageText(message).toLowerCase();
+ function handleXOIncomingData(message) {
+
+    console.log("📩 XO MESSAGE:");
+    console.log(JSON.stringify(message, null, 2));
+
+   const text = getMessageText(message).toLowerCase();
 
     if (text.includes('won') || text.includes('lost') || text.includes('tie') || text.includes('draw') || text.includes('تعادل') || text.includes('rematch') || text.includes('game over')) {
       if (!xoIsGameEnding) {
