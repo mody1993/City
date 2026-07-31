@@ -810,6 +810,9 @@ console.log("Messaging methods:", Object.keys(client.messaging));
    console.log(`📩 XO من ${config.name}`);
 
    const text = getMessageText(message).toLowerCase();
+   console.log("TEXT:", text);
+console.log("ENDING:", xoIsGameEnding);
+console.log("SENDING:", xoIsSending);
 if (text.includes('لقد فزت') || text.includes('فزت!')) {
     console.log("🏆 تم الفوز");
 }
