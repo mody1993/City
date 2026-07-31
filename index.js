@@ -107,9 +107,9 @@ const ACCOUNTS = [
 ];
 
 // 🎯 تخصيص تفاعلات الألعاب (أرقام الحسابات index)
-const ACTIVE_RACE_ACCOUNTS      = [];
-const AIRPLANE_ACCOUNTS         = [];
-const XO_ACCOUNTS                = [1];
+const ACTIVE_RACE_ACCOUNTS      = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const AIRPLANE_ACCOUNTS         = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const XO_ACCOUNTS                = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 // 🎮 تخصيص حسابات قراند
 const GRAND_COLLECT_ACCOUNTS       = [1, 2, 3, 4];
@@ -810,9 +810,9 @@ console.log("Messaging methods:", Object.keys(client.messaging));
    console.log(`📩 XO من ${config.name}`);
 
    const text = getMessageText(message).toLowerCase();
-   console.log("TEXT:", text);
-console.log("ENDING:", xoIsGameEnding);
-console.log("SENDING:", xoIsSending);
+   //console.log("TEXT:", text);
+   //console.log("ENDING:", xoIsGameEnding);
+   //console.log("SENDING:", xoIsSending);
 if (text.includes('لقد فزت') || text.includes('فزت!')) {
     console.log("🏆 تم الفوز");
 }
