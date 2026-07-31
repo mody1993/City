@@ -1,4 +1,13 @@
+import 'dotenv/config';
 
+process.env.SUPPRESS_NO_CONFIG_WARNING = 'true';
+
+// =========================================================================
+// 🧹 1. تنظيف وفلترة سجلات الكونسول (Console Logs)
+// =========================================================================
+const originalLog = console.log.bind(console);
+const originalWarn = console.warn.bind(console);
+const originalError = console.error.bind(console);
 
 const HIDE_LOGS = [
   '[DEBUG]', '[WARN]', 'DEBUG', 'WARN', 'CleanUp', 'Synchronise',
@@ -75,8 +84,8 @@ const ACCOUNTS = [
 ];
 
 // 🎯 تخصيص تفاعلات الألعاب (أرقام الحسابات index)
-const ACTIVE_RACE_ACCOUNTS      = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-const AIRPLANE_ACCOUNTS         = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const ACTIVE_RACE_ACCOUNTS      = [];
+const AIRPLANE_ACCOUNTS         = [];
 const XO_ACCOUNTS                = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 // 🎮 تخصيص حسابات قراند
