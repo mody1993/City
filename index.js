@@ -785,6 +785,9 @@ console.log("Messaging methods:", Object.keys(client.messaging));
     const isMyTurn = text.includes('your turn') || text.includes('turn');
     if (isMyTurn && !xoIsGameEnding && !xoIsSending) {
       const moveIndex = getBestXOMove(xoBoard, xoMySign, xoBotSign);
+      console.log("BOARD:", xoBoard);
+console.log("MOVE:", moveIndex);
+      
       if (moveIndex !== undefined && moveIndex !== -1) {
         const squareToPlay = (moveIndex + 1).toString();
         xoIsSending = true;
@@ -792,7 +795,15 @@ console.log("Messaging methods:", Object.keys(client.messaging));
 
         setTimeout(async () => {
           try {
-            await client.messaging.sendPrivateMessage(XO_BOT_ID, squareToPlay);
+            console.log("🎯 سأرسل:", squareToPlay);
+
+await client.messaging.sendPrivateMessage(
+    XO_BOT_ID,
+    squareToPlay
+);
+
+console.log("🎯 تم الإرسال");
+            
             console.log(`✅ [${config.name}] XO لعب الخانة: ${squareToPlay}`);
           } catch (e) {}
           setTimeout(() => { xoIsSending = false; }, 800);
