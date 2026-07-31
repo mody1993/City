@@ -927,24 +927,24 @@ function createBot(config) {
     }
 
     // ج) لعبة XO
-    if (XO_ACCOUNTS.includes(config.index)) {
-      setTimeout(async () => {
+    // ج) لعبة XO
+if (XO_ACCOUNTS.includes(config.index)) {
+    setTimeout(async () => {
         try {
-          try {
-    console.log(`🎮 [${config.name}] جاري إرسال أمر البداية...`);
+            console.log(`🎮 [${config.name}] جاري إرسال أمر البداية...`);
 
-    await client.messaging.sendGroupMessage(
-        XO_ROOM_ID,
-        XO_START_COMMAND
-    );
+            await client.messaging.sendGroupMessage(
+                XO_ROOM_ID,
+                XO_START_COMMAND
+            );
 
-    console.log(`✅ [${config.name}] تم إرسال أمر البداية`);
-} catch (e) {
-    console.error(`❌ [${config.name}] فشل إرسال أمر XO`);
-    console.error(e);
+            console.log(`✅ [${config.name}] تم إرسال أمر البداية`);
+        } catch (e) {
+            console.error(`❌ [${config.name}] فشل إرسال أمر XO`);
+            console.error(e);
+        }
+    }, 3000);
 }
-      }, 3000);
-    }
 
     // د) تسجيل الحساب في مدير قراند المركزي
     if (
