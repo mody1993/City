@@ -913,9 +913,14 @@ setTimeout(async () => {
         );
 
         console.log(`✅ [${config.name}] XO لعب الخانة: ${squareToPlay}`);
+
     } catch (e) {
         console.error(e);
- 
+
+    } finally {
+        xoIsSending = false;
+    }
+
 }, 2000);
       }
     }
