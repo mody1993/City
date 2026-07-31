@@ -646,29 +646,87 @@ const WINNING_COMBOS = [
   [0, 4, 8], [2, 4, 6]
 ];
 
+function checkWinner(board) {
+  for (const combo of WINNING_COMBOS) {
+    const [a, b, c] = combo;
+    if (
+      board[a] &&
+      board[a] === board[b] &&
+      board[a] === board[c]
+    ) {
+      return board[a];
+    }
+  }
+
+  if (board.every(cell => cell !== null)) {
+    return "draw";
+  }
+
+  return null;
+}
+
+function minimax(board, depth, isMaximizing, mySign, botSign) {
+  const result = checkWinner(board);
+
+  if (result === mySign) return 10 - depth;
+  if (result === botSign) return depth - 10;
+  if (result === "draw") return 0;
+
+  if (isMaximizing) {
+    let bestScore = -Infinity;
+
+    for (let i = 0; i < 9; i++) {
+      if (board[i] === null) {
+        board[i] = mySign;
+        const score = minimax(board, depth + 1, false, mySign, botSign);
+        board[i] = null;
+        bestScore = Math.max(bestScore, score);
+      }
+    }
+
+    return bestScore;
+  } else {
+    let bestScore = Infinity;
+
+    for (let i = 0; i < 9; i++) {
+      if (board[i] === null) {
+        board[i] = botSign;
+        const score = minimax(board, depth + 1, true, mySign, botSign);
+        board[i] = null;
+        bestScore = Math.min(bestScore, score);
+      }
+    }
+
+    return bestScore;
+  }
+}
+
 function getBestXOMove(board, mySign, botSign) {
-  const availableMoves = [];
-  for (let i = 0; i < 9; i++) if (board[i] === null) availableMoves.push(i);
-  if (availableMoves.length === 0) return undefined;
+  let bestScore = -Infinity;
+  let bestMove = -1;
 
-  for (let combo of WINNING_COMBOS) {
-    let myCount = combo.filter(i => board[i] === mySign).length;
-    let emptyCount = combo.filter(i => board[i] === null).length;
-    if (myCount === 2 && emptyCount === 1) return combo.find(i => board[i] === null);
+  for (let i = 0; i < 9; i++) {
+    if (board[i] === null) {
+      board[i] = mySign;
+
+      const score = minimax(
+        board,
+        0,
+        false,
+        mySign,
+        botSign
+      );
+
+      board[i] = null;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestMove = i;
+      }
+    }
   }
 
-  for (let combo of WINNING_COMBOS) {
-    let botCount = combo.filter(i => board[i] === botSign).length;
-    let emptyCount = combo.filter(i => board[i] === null).length;
-    if (botCount === 2 && emptyCount === 1) return combo.find(i => board[i] === null);
-  }
-
-  if (board[4] === null && availableMoves.includes(4)) return 4;
-
-  const corners = [0, 2, 6, 8].filter(i => board[i] === null);
-  if (corners.length > 0) return corners[Math.floor(Math.random() * corners.length)];
-
-  return availableMoves[Math.floor(Math.random() * availableMoves.length)];
+  return bestMove;
 }
 
 // =========================================================================
@@ -826,7 +884,7 @@ setTimeout(async () => {
     } finally {
         xoIsSending = false;
     }
-}, 1000);
+}, 2000);
       }
     }
   }
