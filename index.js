@@ -676,7 +676,8 @@ function getBestXOMove(board, mySign, botSign) {
 // =========================================================================
 function createBot(config) {
   const client = new WOLF();
-
+console.log("Messaging methods:", Object.keys(client.messaging));
+  
   let isAccountTerminated = false;
 
   // ----- متغيرات المعززات -----
