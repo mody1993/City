@@ -761,10 +761,26 @@ console.log("Messaging methods:", Object.keys(client.messaging));
         console.log(`🏁 [${config.name}] انتهاء لعبة XO، إعادة البدء بعد 5 ثوانٍ...`);
         xoBoard = Array(9).fill(null);
 
-        setTimeout(async () => {
-          try { await client.messaging.sendGroupMessage(XO_ROOM_ID, XO_START_COMMAND); } catch (e) {}
-          xoIsGameEnding = false;
-        }, 5000);
+       setTimeout(async () => {
+  console.log("🔥 دخل مؤقت إعادة البداية");
+
+  try {
+    console.log("🎮 إرسال أمر البداية...");
+
+    const ok = await globalQueue.add(
+      client,
+      XO_ROOM_ID,
+      XO_START_COMMAND,
+      config.name
+    );
+
+    console.log("RESULT:", ok);
+  } catch (e) {
+    console.error("XO ERROR:", e);
+  } finally {
+    xoIsGameEnding = false;
+  }
+}, 5000);
       }
       return;
     }
