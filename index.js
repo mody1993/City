@@ -807,13 +807,38 @@ console.log("Messaging methods:", Object.keys(client.messaging));
 
  function handleXOIncomingData(message) {
 
-    console.log("📩 XO MESSAGE:");
-    console.log(JSON.stringify(message, null, 2));
+   console.log(`📩 XO من ${config.name}`);
 
    const text = getMessageText(message).toLowerCase();
+if (text.includes('لقد فزت') || text.includes('فزت!')) {
+    console.log("🏆 تم الفوز");
+}
 
-    if (text.includes('won') || text.includes('lost') || text.includes('tie') || text.includes('draw') || text.includes('تعادل') || text.includes('rematch') || text.includes('game over')) {
-      if (!xoIsGameEnding) {
+if (text.includes('لقد خسرت') || text.includes('خسرت')) {
+    console.log("💀 تم الخسارة");
+}
+
+if (text.includes('تعادل')) {
+    console.log("🤝 تعادل");
+}
+   
+if (
+    text.includes('won') ||
+    text.includes('lost') ||
+    text.includes('tie') ||
+    text.includes('draw') ||
+    text.includes('game over') ||
+
+    text.includes('لقد فزت') ||
+    text.includes('فزت') ||
+    text.includes('لقد خسرت') ||
+    text.includes('خسرت') ||
+    text.includes('تعادل') ||
+    text.includes('اعادة') ||
+    text.includes('إعادة') ||
+    text.includes('تنتهي خلال')
+) {
+  if (!xoIsGameEnding) {
         xoIsGameEnding = true;
         xoIsSending = false;
         console.log(`🏁 [${config.name}] انتهاء لعبة XO، إعادة البدء بعد 5 ثوانٍ...`);
@@ -856,8 +881,11 @@ console.log("Messaging methods:", Object.keys(client.messaging));
       }
     }
 
-    const isMyTurn = text.includes('your turn') || text.includes('turn');
-    if (isMyTurn && !xoIsGameEnding && !xoIsSending) {
+const isMyTurn =
+    text.includes('your turn! (❌)') ||
+    text.includes('your turn! (⭕)') ||
+    text.includes('دورك!');
+   if (isMyTurn && !xoIsGameEnding && !xoIsSending) {
       const moveIndex = getBestXOMove(xoBoard, xoMySign, xoBotSign);
       console.log("BOARD:", xoBoard);
 console.log("MOVE:", moveIndex);
