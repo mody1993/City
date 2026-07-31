@@ -847,8 +847,13 @@ if (
         console.log(`🏁 [${config.name}] انتهاء لعبة XO، إعادة البدء بعد 5 ثوانٍ...`);
         xoBoard = Array(9).fill(null);
 
-       setTimeout(async () => {
+     setTimeout(async () => {
   console.log("🔥 دخل مؤقت إعادة البداية");
+
+  // افتح استقبال اللعبة الجديدة قبل الإرسال
+  xoBoard = Array(9).fill(null);
+  xoIsSending = false;
+  xoIsGameEnding = false;
 
   try {
     console.log("🎮 إرسال أمر البداية...");
@@ -863,8 +868,6 @@ if (
     console.log("RESULT:", ok);
   } catch (e) {
     console.error("XO ERROR:", e);
-  } finally {
-    xoIsGameEnding = false;
   }
 }, 5000);
       }
@@ -912,9 +915,7 @@ setTimeout(async () => {
         console.log(`✅ [${config.name}] XO لعب الخانة: ${squareToPlay}`);
     } catch (e) {
         console.error(e);
-    } finally {
-        xoIsSending = false;
-    }
+ 
 }, 2000);
       }
     }
