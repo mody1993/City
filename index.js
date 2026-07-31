@@ -793,21 +793,24 @@ console.log("MOVE:", moveIndex);
         xoIsSending = true;
         xoBoard[moveIndex] = xoMySign;
 
-        setTimeout(async () => {
-          try {
-            console.log("🎯 سأرسل:", squareToPlay);
+        xoIsSending = true;
 
-await client.messaging.sendPrivateMessage(
-    XO_BOT_ID,
-    squareToPlay
-);
+setTimeout(async () => {
+    try {
+        console.log("🎯 سأرسل:", squareToPlay);
 
-console.log("🎯 تم الإرسال");
-            
-            console.log(`✅ [${config.name}] XO لعب الخانة: ${squareToPlay}`);
-          } catch (e) {}
-          setTimeout(() => { xoIsSending = false; }, 800);
-        }, 1000);
+        await client.messaging.sendPrivateMessage(
+            XO_BOT_ID,
+            squareToPlay
+        );
+
+        console.log(`✅ [${config.name}] XO لعب الخانة: ${squareToPlay}`);
+    } catch (e) {
+        console.error(e);
+    } finally {
+        xoIsSending = false;
+    }
+}, 1000);
       }
     }
   }
