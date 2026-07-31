@@ -41,6 +41,29 @@ console.error = (...args) => {
   if (shouldHide(text)) return;
   originalError(...args);
 };
+const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+
+process.stdout.write = (chunk, encoding, callback) => {
+    const text = chunk?.toString?.() || '';
+
+    if (shouldHide(text)) {
+        return true;
+    }
+
+    return originalStdoutWrite(chunk, encoding, callback);
+};
+
+const originalStderrWrite = process.stderr.write.bind(process.stderr);
+
+process.stderr.write = (chunk, encoding, callback) => {
+    const text = chunk?.toString?.() || '';
+
+    if (shouldHide(text)) {
+        return true;
+    }
+
+    return originalStderrWrite(chunk, encoding, callback);
+};
 
 // =========================================================================
 // 📦 2. استيراد المكتبة والأدوات
@@ -86,7 +109,7 @@ const ACCOUNTS = [
 // 🎯 تخصيص تفاعلات الألعاب (أرقام الحسابات index)
 const ACTIVE_RACE_ACCOUNTS      = [];
 const AIRPLANE_ACCOUNTS         = [];
-const XO_ACCOUNTS                = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const XO_ACCOUNTS                = [1];
 
 // 🎮 تخصيص حسابات قراند
 const GRAND_COLLECT_ACCOUNTS       = [1, 2, 3, 4];
@@ -907,9 +930,19 @@ function createBot(config) {
     if (XO_ACCOUNTS.includes(config.index)) {
       setTimeout(async () => {
         try {
-          await client.messaging.sendGroupMessage(XO_ROOM_ID, XO_START_COMMAND);
-          console.log(`🎮 [${config.name}] بدأ لعبة XO في الروم ${XO_ROOM_ID}`);
-        } catch (e) {}
+          try {
+    console.log(`🎮 [${config.name}] جاري إرسال أمر البداية...`);
+
+    await client.messaging.sendGroupMessage(
+        XO_ROOM_ID,
+        XO_START_COMMAND
+    );
+
+    console.log(`✅ [${config.name}] تم إرسال أمر البداية`);
+} catch (e) {
+    console.error(`❌ [${config.name}] فشل إرسال أمر XO`);
+    console.error(e);
+}
       }, 3000);
     }
 
