@@ -1,6 +1,4 @@
-import 'dotenv/config';
 
-process.env.SUPPRESS_NO_CONFIG_WARNING = 'true';
 
 // =========================================================================
 // 🧹 1. تنظيف وفلترة سجلات الكونسول (Console Logs)
