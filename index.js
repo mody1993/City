@@ -1,12 +1,4 @@
 
-
-// =========================================================================
-// 🧹 1. تنظيف وفلترة سجلات الكونسول (Console Logs)
-// =========================================================================
-const originalLog = console.log.bind(console);
-const originalWarn = console.warn.bind(console);
-const originalError = console.error.bind(console);
-
 const HIDE_LOGS = [
   '[DEBUG]', '[WARN]', 'DEBUG', 'WARN', 'CleanUp', 'Synchronise',
   'GroupAudioCountUpdated', 'MessageUpdate', 'Websocket', 'TipAdd',
