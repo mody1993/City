@@ -57,35 +57,34 @@ process.stderr.write = (chunk, encoding, callback) => {
 };
 
 // =========================================================================
-// 📦 2. المكتبات والإعدادات الرئيسية
+// 📦 2. المكتبات وإعدادات الحسابات الـ 12
 // =========================================================================
 import wolfjs from 'wolf.js';
 const { WOLF } = wolfjs.default || wolfjs;
 
 const accounts = [
-  { identity: process.env.U_MAIL_1, secret: process.env.U_PASS_1 },
-  { identity: process.env.U_MAIL_2, secret: process.env.U_PASS_2 },
-  { identity: process.env.U_MAIL_3, secret: process.env.U_PASS_3 },
-  { identity: process.env.U_MAIL_4, secret: process.env.U_PASS_4 },
-  { identity: process.env.U_MAIL_5, secret: process.env.U_PASS_5 },
-  { identity: process.env.U_MAIL_6, secret: process.env.U_PASS_6 },
-  { identity: process.env.U_MAIL_7, secret: process.env.U_PASS_7 },
-  { identity: process.env.U_MAIL_8, secret: process.env.U_PASS_8 },
-  { identity: process.env.U_MAIL_9, secret: process.env.U_PASS_9 },
-  { identity: process.env.U_MAIL_10, secret: process.env.U_PASS_10 },
-  { identity: process.env.U_MAIL_11, secret: process.env.U_PASS_11 },
-  { identity: process.env.U_MAIL_12, secret: process.env.U_PASS_12 }
+  { identity: process.env.U1_MAIL, secret: process.env.U1_PASS },
+  { identity: process.env.U2_MAIL, secret: process.env.U2_PASS },
+  { identity: process.env.U3_MAIL, secret: process.env.U3_PASS },
+  { identity: process.env.U4_MAIL, secret: process.env.U4_PASS },
+  { identity: process.env.U5_MAIL, secret: process.env.U5_PASS },
+  { identity: process.env.U6_MAIL, secret: process.env.U6_PASS },
+  { identity: process.env.U7_MAIL, secret: process.env.U7_PASS },
+  { identity: process.env.U8_MAIL, secret: process.env.U8_PASS },
+  { identity: process.env.U9_MAIL, secret: process.env.U9_PASS },
+  { identity: process.env.U10_MAIL, secret: process.env.U10_PASS },
+  { identity: process.env.U11_MAIL, secret: process.env.U11_PASS },
+  { identity: process.env.U12_MAIL, secret: process.env.U12_PASS }
 ];
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // =========================================================================
-// 🔥 3. استخراج Room ID ودوال التعامل مع المكتبة بشكل آمن
+// 🔥 3. استخراج Room ID ودوال التعامل الآمن مع المكتبة
 // =========================================================================
 function extractRoomId(text = "") {
   if (!text) return null;
   const cleaned = text.replace(/[\u200B-\u200F\uFEFF]/g, '');
-  // البحث عن أرقام الروم سواء مسبوقة بـ ID أو بين أقواس أو أرقام مجردة (5 أرقام فأكثر)
   const match = cleaned.match(/ID\s*(\d{5,})|\((\d{5,})\)|(\d{5,})/i);
   const id = match?.[1] || match?.[2] || match?.[3];
   return id ? parseInt(id, 10) : null;
@@ -118,60 +117,59 @@ async function sendMessageSafe(service, roomId, text) {
 }
 
 // =========================================================================
-// 🤖 4. تشغيل الحسابات الـ 14 بشكل مستقل
+// 🤖 4. تشغيل الحسابات الـ 12 بشكل مستقل
 // =========================================================================
-accounts.forEach((acc, index) => {  
+accounts.forEach((acc, index) => {
+
   const service = new WOLF();
 
-  // 📦 طابور + منع تكرار لكل حساب
+  // 📦 طابور + Set لكل حساب
   let queue = [];
-  let queueSet = new Set();
+  let queueSet = new Set(); // منع التكرار
   let isProcessing = false;
 
-  // ⏱️ نظام الراحة والدورة الزمنية
-  let isResting = false;
-
-  const WORK_TIME = 54 * 60 * 1000; // 54 دقيقة عمل
-  const REST_TIME = 6 * 60 * 1000;   // 6 دقائق راحة
-  const DELAY = 3000;                // تأخير 3 ثوان بين كل إرسال
+  const DELAY = 3000; // تقليل المهلة إلى 3 ثوانٍ لسرعة التنفيذ
 
   // =====================
-  // 📥 إضافة للروم مع إعطاء الأولوية للجديد
+  // 📥 إضافة للروم (بدون تكرار + أولوية جديدة)
   // =====================
   function addToQueue(roomId) {
     if (!roomId) return;
-    if (queueSet.has(roomId)) return; // منع التكرار
+
+    if (queueSet.has(roomId)) return;
 
     queueSet.add(roomId);
-    queue.unshift(roomId); // إدخال الروم في أول الطابور
+
+    // 🔥 أولوية للرومات الجديدة (تدخل أول الطابور)
+    queue.unshift(roomId);
   }
 
   // =====================
-  // 🔁 تنفيذ عناصر الطابور
+  // 🔁 تنفيذ الطابور
   // =====================
   async function processQueue() {
     if (isProcessing) return;
     isProcessing = true;
 
     while (queue.length > 0) {
-      if (isResting) break;
 
       const roomId = queue.shift();
       queueSet.delete(roomId);
 
       try {
-        // 1. محاولة الانضمام للروم
+        // انضمام آمن
         await joinGroupSafe(service, roomId).catch(() => {});
-        
-        // مهلة بسيطة لتأكيد الانضمام لدى السيرفر
+
+        // مهلة بسيطة لضمان الجاهزية بالسيرفر
         await sleep(500);
 
-        // 2. إرسال أمر السرقة
+        // إرسال آمن
         await sendMessageSafe(service, roomId, "!اسرق 5");
+
         console.log(`🚀 [${index + 1}] تم الإرسال بنجاح إلى الروم: ${roomId}`);
 
       } catch (err) {
-        console.log(`❌ [${index + 1}] فشل الإرسال للروم (${roomId}):`, err.message || err);
+        console.log(`❌ [${index + 1}] خطأ في الروم (${roomId}):`, err.message || err);
       }
 
       await sleep(DELAY);
@@ -181,10 +179,9 @@ accounts.forEach((acc, index) => {
   }
 
   // =====================
-  // 📩 استقبال وتحليل الرسائل
+  // 📩 استقبال الرسائل
   // =====================
   service.on('message', async (message) => {
-    // استقبال رسائل الخاص فقط
     if (message.isGroup) return;
 
     const content =
@@ -209,35 +206,12 @@ accounts.forEach((acc, index) => {
 
     addToQueue(roomId);
 
-    if (!isResting) {
-      processQueue();
-    }
+    processQueue();
   });
-
-  // =====================
-  // ⏱️ إدارة دورة 54 / 6
-  // =====================
-  async function cycle() {
-    while (true) {
-      console.log(`🟢 [${index + 1}] بدأت دورة العمل (54 دقيقة)`);
-      isResting = false;
-
-      processQueue();
-
-      await sleep(WORK_TIME);
-
-      console.log(`🛑 [${index + 1}] بدأت فترة الراحة (6 دقائق)`);
-      isResting = true;
-
-      await sleep(REST_TIME);
-    }
-  }
 
   service.on('ready', () => {
     console.log(`✅ الحساب [${index + 1}] جاهز ومتصل`);
-    cycle();
   });
 
-  // تسجيل الدخول
   service.login(acc.identity, acc.secret);
 });
