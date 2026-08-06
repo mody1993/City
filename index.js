@@ -1,3 +1,14 @@
+import 'dotenv/config';
+
+process.env.SUPPRESS_NO_CONFIG_WARNING = 'true';
+
+
+// =========================================================================
+// 🧹 1. تنظيف وفلترة سجلات الكونسول (Console Logs)
+// =========================================================================
+const originalLog = console.log.bind(console);
+const originalWarn = console.warn.bind(console);
+const originalError = console.error.bind(console);
 
 const HIDE_LOGS = [
   '[DEBUG]', '[WARN]', 'DEBUG', 'WARN', 'CleanUp', 'Synchronise',
@@ -97,17 +108,17 @@ const ACCOUNTS = [
 ];
 
 // 🎯 تخصيص تفاعلات الألعاب (أرقام الحسابات index)
-const ACTIVE_RACE_ACCOUNTS      = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-const AIRPLANE_ACCOUNTS         = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-const XO_ACCOUNTS                = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const ACTIVE_RACE_ACCOUNTS      = [];
+const AIRPLANE_ACCOUNTS         = [];
+const XO_ACCOUNTS                = [];
 
 // 🎮 تخصيص حسابات قراند
-const GRAND_COLLECT_ACCOUNTS       = [1, 2, 3, 4];
-const GRAND_STEAL_ATTACK_COUNTS    = [1, 2, 3, 4];
-const GRAND_LOTTERY_ACCOUNTS       = [1, 2, 3, 4];
+const GRAND_COLLECT_ACCOUNTS       = [];
+const GRAND_STEAL_ATTACK_COUNTS    = [];
+const GRAND_LOTTERY_ACCOUNTS       = [];
 
 // 🎁 تحديد الحسابات والأوامر المخصصة للمعززات
-const BONUS_ACCOUNTS_STEAL  = [];
+const BONUS_ACCOUNTS_STEAL  = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 const BONUS_ACCOUNTS_HERO   = [];
 const BONUS_ACCOUNTS_HUNTER = [];
 const BONUS_ACCOUNTS_HUNT   = [];
