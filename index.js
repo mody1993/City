@@ -1,1022 +1,143 @@
 import 'dotenv/config';
+import wolfjs from 'wolf.js';
 
-process.env.SUPPRESS_NO_CONFIG_WARNING = 'true';
+const { WOLF } = wolfjs;
 
-// =========================================================================
-// 🧹 1. تنظيف وفلترة سجلات الكونسول (Console Logs)
-// =========================================================================
-const originalLog = console.log.bind(console);
-const originalWarn = console.warn.bind(console);
-const originalError = console.error.bind(console);
-
-const HIDE_LOGS = [
-  '[DEBUG]', '[WARN]', 'DEBUG', 'WARN', 'CleanUp', 'Synchronise',
-  'GroupAudioCountUpdated', 'MessageUpdate', 'Websocket', 'TipAdd',
-  'Message from self ignoring', 'Store Reset', 'apiKey will be required',
-  'APIKey will be required', 'No configurations found', 'SUPPRESS_NO_CONFIG_WARNING',
-  'Logged in [profile:', 'channel that was not cached', 'privateMessageSubscription',
-  'channelMessageSubscription', 'tipChannelSubscription'
-];
-
-function shouldHide(text) {
-  return HIDE_LOGS.some(word => text.includes(word));
-}
-
-console.log = (...args) => {
-  const text = args.map(String).join(' ');
-  if (shouldHide(text)) return;
-  originalLog(...args);
+// إعدادات البوت المشتركة
+const settings = {
+    targetBotId: 39369782, // بوت قراند
+    actionWord: "!اسرق 5",
+    delayBetweenHeists: 11000,      // 11 ثانية فاصل بين الصيد
+    workDuration: 54 * 60 * 1000,   // 54 دقيقة عمل
+    restDuration: 6 * 60 * 1000     // 6 دقائق راحة
 };
-console.info = console.log;
-console.debug = console.log;
-
-console.warn = (...args) => {
-  const text = args.map(String).join(' ');
-  if (shouldHide(text)) return;
-  originalWarn(...args);
-};
-
-console.error = (...args) => {
-  const text = args.map(String).join(' ');
-  if (shouldHide(text)) return;
-  originalError(...args);
-};
-
-const originalStdoutWrite = process.stdout.write.bind(process.stdout);
-process.stdout.write = (chunk, encoding, callback) => {
-  const text = chunk?.toString?.() || '';
-  if (shouldHide(text)) return true;
-  return originalStdoutWrite(chunk, encoding, callback);
-};
-
-const originalStderrWrite = process.stderr.write.bind(process.stderr);
-process.stderr.write = (chunk, encoding, callback) => {
-  const text = chunk?.toString?.() || '';
-  if (shouldHide(text)) return true;
-  return originalStderrWrite(chunk, encoding, callback);
-};
-
-// =========================================================================
-// 📦 2. استيراد المكتبة والأدوات
-// =========================================================================
-const wolfjs = await import('wolf.js');
-const { WOLF } = wolfjs.default || wolfjs;
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// =========================================================================
-// ⚙️ 3. الإعدادات وتخصيص الحسابات
-// =========================================================================
-const TRACKED_BOT_ID = 80277459;
-const RACE_ROOM_ID = 569;
+// إنشاء Class لكل حساب لضمان عدم تداخل البيانات والطوابير
+class GrandBot {
+    constructor(email, password, index) {
+        this.email = email;
+        this.password = password;
+        this.index = index; // رقم الحساب للتمييز في الكونسول
+        this.service = new WOLF();
+        
+        // متغيرات خاصة بكل حساب
+        this.heistQueue = [];
+        this.isProcessing = false;
+        this.isResting = false;
 
-const AIRPLANE_ROOM_ID = 569;
-const GRAND_ROOM_ID = 569;
-const XO_ROOM_ID = 18187126;
-const XO_BOT_ID = 82727814;
-const XO_START_COMMAND = '!xo private ai 3';
-
-const RACE_END_TIMEOUT_MS = 120 * 1000;    // 2 دقيقة لمراقبة انتهاء السباق
-const ENERGY_FALLBACK_MS = 11 * 60 * 1000; // 11 دقيقة كحد أقصى لاسترجاع الطاقة
-const BONUS_DELAY = 11000;                  // 11 ثانية فاصل بين الصيد
-const WORK_TIME = 54 * 60 * 1000;           // 54 دقيقة عمل للمعززات والصيد
-const REST_TIME = 6 * 60 * 1000;            // 6 دقائق راحة للمعززات والصيد
-
-const ACCOUNTS = [
-  { email: process.env.U_MAIL_1, password: process.env.U_PASS_1, name: 'King', id: 38770375, index: 1, sChannel: 569 },
-  { email: process.env.U_MAIL_2, password: process.env.U_PASS_2, name: 'KSA', id: 27112980, index: 2, sChannel: 569 },
-  { email: process.env.U_MAIL_3, password: process.env.U_PASS_3, name: 'MKH', id: 1780249, index: 3, sChannel: 569 },
-  { email: process.env.U_MAIL_4, password: process.env.U_PASS_4, name: 'SAA', id: 2251312, index: 4, sChannel: 569 },
-  { email: process.env.U_MAIL_5, password: process.env.U_PASS_5, name: 'JDH', id: 39043364, index: 5, sChannel: 569 },
-  { email: process.env.U_MAIL_6, password: process.env.U_PASS_6, name: 'MLK', id: 34648535, index: 6, sChannel: 569 },
-  { email: process.env.U_MAIL_7, password: process.env.U_PASS_7, name: 'CRN', id: 79996355, index: 7, sChannel: 569 },
-  { email: process.env.U_MAIL_8, password: process.env.U_PASS_8, name: 'REX', id: 34435550, index: 8, sChannel: 569 },
-  { email: process.env.U_MAIL_9, password: process.env.U_PASS_9, name: 'LRD', id: 15859439, index: 9, sChannel: 569 },
-  { email: process.env.U_MAIL_10, password: process.env.U_PASS_10, name: 'ROY', id: 32198971, index: 10, sChannel: 569 },
-  { email: process.env.U_MAIL_11, password: process.env.U_PASS_11, name: 'EMP', id: 39515341, index: 11, sChannel: 569 },
-  { email: process.env.U_MAIL_12, password: process.env.U_PASS_12, name: 'NOR', id: 2374823, index: 12, sChannel: 569 }
-];
-
-// 🎯 تخصيص تفاعلات الألعاب (أرقام الحسابات index)
-const ACTIVE_RACE_ACCOUNTS      = [];
-const AIRPLANE_ACCOUNTS         = [];
-const XO_ACCOUNTS                = [];
-
-// 🎮 تخصيص حسابات قراند
-const GRAND_COLLECT_ACCOUNTS       = [];
-const GRAND_STEAL_ATTACK_COUNTS    = [];
-const GRAND_LOTTERY_ACCOUNTS       = [];
-
-// 🎁 تحديد الحسابات والأوامر المخصصة للمعززات والصيد
-const BONUS_ACCOUNTS_STEAL  = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-const BONUS_ACCOUNTS_HERO   = [];
-const BONUS_ACCOUNTS_HUNTER = [];
-const BONUS_ACCOUNTS_HUNT   = [];
-
-// ربط معرف البوت المستهدف بالأمر والحسابات المفعلة
-const BOT_TRIGGERS = [
-  { botId: 39369782, command: "!اسرق 5", accounts: BONUS_ACCOUNTS_STEAL },
-  { botId: 45578849, command: "!بطل 5",  accounts: BONUS_ACCOUNTS_HERO },
-  { botId: 76305584, command: "!صياد 3", accounts: BONUS_ACCOUNTS_HUNTER },
-  { botId: 32060007, command: "!صيد 3",  accounts: BONUS_ACCOUNTS_HUNT }
-];
-
-function isAccountInTrigger(trigger, config) {
-  if (!trigger || !trigger.accounts) return false;
-  return trigger.accounts.includes(config.index) || trigger.accounts.includes(config.id);
-}
-
-function isAccountActive(index) {
-  return ACTIVE_RACE_ACCOUNTS.includes(Number(index));
-}
-
-function getFirstActiveIndex() {
-  const sorted = [...ACTIVE_RACE_ACCOUNTS].sort((a, b) => a - b);
-  return sorted.length > 0 ? sorted[0] : null;
-}
-
-function getNextActiveIndex(currentIndex) {
-  const sorted = [...ACTIVE_RACE_ACCOUNTS].sort((a, b) => a - b);
-  if (sorted.length === 0) return null;
-  const next = sorted.find(index => index > currentIndex);
-  return next ?? sorted[0];
-}
-
-// =========================================================================
-// 🏢 4. نظام ومدير دورات قراند المركزي
-// =========================================================================
-const grandStealCycleCounter = new Map();
-const GRAND_ACCOUNT_GAP_MS = 15 * 1000;
-const GRAND_COMMAND_GAP_MS = 10 * 1000;
-const GRAND_COLLECT_INTERVAL_MS = 70 * 1000;
-const GRAND_STEAL_ATTACK_INTERVAL_MS = 130 * 1000;
-const GRAND_LOTTERY_INTERVAL_MS = 65 * 1000;
-const GRAND_LOTTERY_NUMBER_DELAY_MS = 10 * 1000;
-
-const GRAND_BOTS = new Map();
-let grandSchedulersStarted = false;
-
-function registerGrandBot(index, name, send, isTerminated) {
-  const accountIndex = Number(index);
-  const oldBot = GRAND_BOTS.get(accountIndex);
-
-  GRAND_BOTS.set(accountIndex, {
-    index: accountIndex,
-    name,
-    send,
-    isTerminated,
-    grandQueue: oldBot?.grandQueue || Promise.resolve()
-  });
-}
-
-function getGrandBots(accountIndexes) {
-  return [...new Set(accountIndexes.map(Number))]
-    .sort((a, b) => a - b)
-    .map(index => GRAND_BOTS.get(index))
-    .filter(bot => bot && !bot.isTerminated());
-}
-
-function enqueueGrandTask(bot, taskName, task) {
-  const run = async () => {
-    if (bot.isTerminated()) return false;
-    try {
-      return await task();
-    } catch (error) {
-      console.error(`[قراند] ❌ [${bot.name}] خطأ في ${taskName}:`, error?.message || error);
-      return false;
+        this.setupEvents();
     }
-  };
-  bot.grandQueue = bot.grandQueue.then(run, run);
-  return bot.grandQueue;
-}
 
-async function runGrandAccountsInOrder(accountIndexes, taskName, taskFactory) {
-  const bots = getGrandBots(accountIndexes);
-  for (let position = 0; position < bots.length; position++) {
-    const bot = bots[position];
-    await enqueueGrandTask(bot, taskName, () => taskFactory(bot));
-    if (position < bots.length - 1) {
-      await sleep(GRAND_ACCOUNT_GAP_MS);
-    }
-  }
-}
+    async processQueue() {
+        if (this.isProcessing || this.heistQueue.length === 0 || this.isResting) return;
 
-async function grandCollectScheduler() {
-  while (true) {
-    try {
-      await runGrandAccountsInOrder(
-        GRAND_COLLECT_ACCOUNTS,
-        'جمع',
-        bot => bot.send(GRAND_ROOM_ID, '!قراند جمع 5')
-      );
-    } catch (error) {
-      console.error('[قراند جمع] ❌ خطأ في الدورة المركزية:', error?.message || error);
-    }
-    await sleep(GRAND_COLLECT_INTERVAL_MS);
-  }
-}
+        this.isProcessing = true;
 
-async function grandStealAttackScheduler() {
-  while (true) {
-    try {
-      await runGrandAccountsInOrder(
-        GRAND_STEAL_ATTACK_COUNTS,
-        'سرقة وهجوم',
-        async bot => {
-          const stealSent = await bot.send(GRAND_ROOM_ID, '!قراند سرقة 5');
-          await sleep(GRAND_COMMAND_GAP_MS);
+        while (this.heistQueue.length > 0 && !this.isResting) {
+            const roomId = this.heistQueue.shift();
+            
+            console.log(`[حساب ${this.index}] ⏳ انتظار الاستراحة بين الصيد... الروم: ${roomId}`);
+            await sleep(settings.delayBetweenHeists);
 
-          if (bot.isTerminated()) return false;
-
-          const attackSent = await bot.send(GRAND_ROOM_ID, '!قراند هجوم 5');
-          if (attackSent) {
-            const cycle = (grandStealCycleCounter.get(bot.index) || 0) + 1;
-            grandStealCycleCounter.set(bot.index, cycle);
-
-            if (cycle >= 3) {
-              grandStealCycleCounter.set(bot.index, 0);
-              await sleep(10000);
-              if (!bot.isTerminated()) {
-                await bot.send(GRAND_ROOM_ID, '!قراند سلاح تجهيز 30');
-              }
+            if (this.isResting) {
+                this.heistQueue.unshift(roomId); 
+                break;
             }
-          }
-          return Boolean(stealSent && attackSent);
-        }
-      );
-    } catch (error) {
-      console.error('[قراند سرقة وهجوم] ❌ خطأ في الدورة المركزية:', error?.message || error);
-    }
-    await sleep(GRAND_STEAL_ATTACK_INTERVAL_MS);
-  }
-}
 
-async function grandLotteryScheduler() {
-  while (true) {
-    try {
-      await runGrandAccountsInOrder(
-        GRAND_LOTTERY_ACCOUNTS,
-        'اليانصيب',
-        async bot => {
-          const lotterySent = await bot.send(GRAND_ROOM_ID, '!قراند يانصيب اسطوري');
-          await sleep(GRAND_LOTTERY_NUMBER_DELAY_MS);
-
-          if (bot.isTerminated()) return false;
-
-          const numberSent = await bot.send(GRAND_ROOM_ID, '5');
-          return Boolean(lotterySent && numberSent);
-        }
-      );
-    } catch (error) {
-      console.error('[قراند يانصيب] ❌ خطأ في الدورة المركزية:', error?.message || error);
-    }
-    await sleep(GRAND_LOTTERY_INTERVAL_MS);
-  }
-}
-
-function startGrandSchedulersOnce() {
-  if (grandSchedulersStarted) return;
-  grandSchedulersStarted = true;
-
-  setTimeout(() => {
-    grandCollectScheduler().catch(err => console.error('[قراند جمع] توقف:', err?.message));
-    grandStealAttackScheduler().catch(err => console.error('[قراند سرقة وهجوم] توقف:', err?.message));
-    grandLotteryScheduler().catch(err => console.error('[قراند يانصيب] توقف:', err?.message));
-  }, 35000);
-}
-
-// =========================================================================
-// 🛠️ 5. أدوات المعالجة واستخراج البيانات
-// =========================================================================
-function getSenderId(message) {
-  return Number(
-    message.sourceSubscriberId || message.authorId || message.sourceUserId ||
-    message.sourceId || message.senderId || message.userId || 0
-  );
-}
-
-function getMessageText(message) {
-  return (message.body || message.content || message.text || message.message || '').toString().trim();
-}
-
-function getRoomId(message) {
-  return Number(
-    message.targetChannelId || message.targetGroupId || message.groupId ||
-    message.channelId || message.recipientGroupId || message.group?.id || message.channel?.id || 0
-  );
-}
-
-function cleanText(text) {
-  return String(text || '').replace(/[\u200B-\u200F\uFEFF\u2060]/g, '').trim();
-}
-
-function isEnergyReadyMessage(text) {
-  const body = cleanText(text).toLowerCase();
-  return (
-    body.includes('your animal is back to full energy') ||
-    body.includes('animal is back to full energy') ||
-    body.includes('عاد حيوانك لطاقته الكاملة') ||
-    body.includes('عاد حيوانك إلى طاقته الكاملة') ||
-    body.includes('طاقته الكاملة') ||
-    body.includes('full energy')
-  );
-}
-
-function extractLastIdFromRaceMessage(body) {
-  const cleanBody = cleanText(body);
-  const ids = [...cleanBody.matchAll(/\((\d+)\)/g)];
-  if (ids.length === 0) return null;
-  return ids[ids.length - 1][1];
-}
-
-function extractRoomIdFromBonus(text = "") {
-  const cleaned = cleanText(text).replace(/\s+/g, ' ');
-  let match = cleaned.match(/\(ID\s*(\d+)\)/i);
-  if (!match) match = cleaned.match(/\((\d+)\)/);
-  if (!match) match = cleaned.match(/\b(\d{3,})\b/);
-  return match ? Number(match[1]) : null;
-}
-
-// =========================================================================
-// 🛡️ 6. طابور الإرسال الآمن (SafeQueue)
-// =========================================================================
-class SafeQueue {
-  constructor() {
-    this.queue = [];
-    this.isProcessing = false;
-  }
-
-  async add(client, channelId, command, accountName = 'UNKNOWN') {
-    return new Promise((resolve) => {
-      this.queue.push({ client, channelId, command, accountName, resolve });
-      this.process();
-    });
-  }
-
-  async process() {
-    if (this.isProcessing || this.queue.length === 0) return;
-    this.isProcessing = true;
-
-    const { client, channelId, command, accountName, resolve } = this.queue.shift();
-    let success = false;
-
-    try {
-      if (typeof client.messaging?.sendChannelMessage === 'function') {
-        await client.messaging.sendChannelMessage(Number(channelId), command);
-      } else if (typeof client.messaging?.sendGroupMessage === 'function') {
-        await client.messaging.sendGroupMessage(Number(channelId), command);
-      }
-      console.log(`📤 [${accountName}] ${command}`);
-      success = true;
-      await sleep(2000);
-    } catch (err) {
-      console.error(`❌ [${accountName}] خطأ إرسال: ${err.message}`);
-    }
-
-    this.isProcessing = false;
-    resolve(success);
-    this.process();
-  }
-}
-
-const globalQueue = new SafeQueue();
-
-// =========================================================================
-// 🚦 7. مدير سباق الحصان (RaceManager)
-// =========================================================================
-class RaceManager {
-  constructor() {
-    this.currentTurnIndex = 1;
-    this.clientsMap = new Map();
-    this.accountStates = new Map();
-    this.isRaceRunning = false;
-    this.activeRaceIndex = null;
-    this.lastRaceId = null;
-    this.lastRaceTime = 0;
-    this.hasStarted = false;
-    this.raceWatchdog = null;
-    this.energyWaitTimer = null;
-    this.energyWaitIndex = null;
-  }
-
-  registerClient(index, config, client, triggerFunc) {
-    this.clientsMap.set(index, { config, client, triggerFunc });
-
-    if (!this.accountStates.has(index)) {
-      this.accountStates.set(index, {
-        energyReady: true,
-        inRace: false,
-        lastStartedAt: 0,
-        lastFinishedAt: 0
-      });
-    }
-
-    if (this.hasStarted && !this.isRaceRunning && this.currentTurnIndex === index) {
-      this.tryStartCurrentTurn();
-    }
-  }
-
-  getState(index) {
-    if (!this.accountStates.has(index)) {
-      this.accountStates.set(index, {
-        energyReady: true,
-        inRace: false,
-        lastStartedAt: 0,
-        lastFinishedAt: 0
-      });
-    }
-    return this.accountStates.get(index);
-  }
-
-  start() {
-    if (this.hasStarted) return;
-    const firstActiveIndex = getFirstActiveIndex();
-    if (firstActiveIndex === null) return;
-    this.hasStarted = true;
-    this.currentTurnIndex = firstActiveIndex;
-    console.log(`🚀 بدء نظام سباق الحصان من الحساب رقم ${firstActiveIndex}.`);
-    this.tryStartCurrentTurn();
-  }
-
-  clearRaceWatchdog() {
-    if (this.raceWatchdog) {
-      clearTimeout(this.raceWatchdog);
-      this.raceWatchdog = null;
-    }
-  }
-
-  startRaceWatchdog(index) {
-    this.clearRaceWatchdog();
-    this.raceWatchdog = setTimeout(() => {
-      if (this.isRaceRunning && this.activeRaceIndex === index) {
-        const bot = this.clientsMap.get(index);
-        const state = this.getState(index);
-
-        console.log(`⚠️ لم تصل رسالة انتهاء السباق لـ ${bot?.config?.name || index}، الانتقال للحساب التالي.`);
-
-        state.inRace = false;
-        state.energyReady = false;
-        state.lastFinishedAt = Date.now();
-
-        this.isRaceRunning = false;
-        this.activeRaceIndex = null;
-
-        const nextActiveIndex = getNextActiveIndex(index);
-        if (nextActiveIndex === null) return;
-
-        this.currentTurnIndex = nextActiveIndex;
-        this.tryStartCurrentTurn();
-      }
-    }, RACE_END_TIMEOUT_MS);
-  }
-
-  clearEnergyWaitTimer() {
-    if (this.energyWaitTimer) {
-      clearTimeout(this.energyWaitTimer);
-      this.energyWaitTimer = null;
-    }
-    this.energyWaitIndex = null;
-  }
-
-  scheduleEnergyFallback(index, remainingMs) {
-    this.clearEnergyWaitTimer();
-    this.energyWaitIndex = index;
-
-    this.energyWaitTimer = setTimeout(() => {
-      if (this.isRaceRunning || this.currentTurnIndex !== index || this.energyWaitIndex !== index) return;
-
-      const bot = this.clientsMap.get(index);
-      const state = this.getState(index);
-
-      state.energyReady = true;
-      this.energyWaitTimer = null;
-      this.energyWaitIndex = null;
-
-      console.log(`✅ [طاقة احتياطية] تم اعتبار ${bot?.config?.name || index} جاهزاً.`);
-      this.tryStartCurrentTurn();
-    }, Math.max(0, remainingMs));
-  }
-
-  async tryStartCurrentTurn() {
-    if (this.isRaceRunning) return;
-
-    const turnIndex = this.currentTurnIndex;
-    const currentBot = this.clientsMap.get(turnIndex);
-
-    if (!currentBot) {
-      const nextActive = getNextActiveIndex(turnIndex);
-      if (nextActive === null) return;
-      this.currentTurnIndex = nextActive;
-      return this.tryStartCurrentTurn();
-    }
-
-    const state = this.getState(turnIndex);
-
-    if (!state.energyReady) {
-      if (state.lastFinishedAt > 0) {
-        const elapsed = Date.now() - state.lastFinishedAt;
-        const remaining = ENERGY_FALLBACK_MS - elapsed;
-
-        if (remaining <= 0) {
-          state.energyReady = true;
-        } else {
-          this.scheduleEnergyFallback(turnIndex, remaining);
-          return;
-        }
-      } else {
-        return;
-      }
-    }
-
-    if (state.inRace) return;
-
-    this.clearEnergyWaitTimer();
-    state.energyReady = false;
-    state.inRace = true;
-    state.lastStartedAt = Date.now();
-
-    this.isRaceRunning = true;
-    this.activeRaceIndex = turnIndex;
-
-    console.log(`🎯 [${currentBot.config.name}] حان دوري في السباق...`);
-    const sent = await currentBot.triggerFunc();
-
-    if (!sent) {
-      state.inRace = false;
-      state.energyReady = true;
-      this.isRaceRunning = false;
-      this.activeRaceIndex = null;
-      return;
-    }
-
-    this.startRaceWatchdog(turnIndex);
-  }
-
-  handleEnergyReady(accountIndex) {
-    const bot = this.clientsMap.get(accountIndex);
-    const state = this.getState(accountIndex);
-
-    if (state.energyReady) return;
-    state.energyReady = true;
-
-    console.log(`🔋 [${bot?.config?.name || accountIndex}] استعاد الطاقة وصار جاهزاً.`);
-
-    if (!this.isRaceRunning && accountIndex === this.currentTurnIndex) {
-      this.clearEnergyWaitTimer();
-      this.tryStartCurrentTurn();
-    }
-  }
-
-  async handleRaceEndMessage(body) {
-    body = cleanText(body);
-    if (!body.includes('انتهى السباق')) return;
-
-    const extractedId = extractLastIdFromRaceMessage(body);
-    if (!extractedId) return;
-
-    const now = Date.now();
-    if (this.lastRaceId === extractedId && now - this.lastRaceTime < 5000) return;
-
-    const finishedBot = [...this.clientsMap.values()].find(
-      bot => String(bot.config.id) === String(extractedId)
-    );
-
-    if (!finishedBot) return;
-
-    const finishedIndex = finishedBot.config.index;
-    if (this.activeRaceIndex !== finishedIndex) return;
-
-    this.lastRaceId = extractedId;
-    this.lastRaceTime = now;
-
-    const finishedState = this.getState(finishedIndex);
-    finishedState.inRace = false;
-    finishedState.energyReady = false;
-    finishedState.lastFinishedAt = Date.now();
-
-    console.log(`🏁 [السباق] الحساب ${finishedBot.config.name} أنهى السباق.`);
-
-    this.clearRaceWatchdog();
-    this.isRaceRunning = false;
-    this.activeRaceIndex = null;
-
-    const nextActiveIndex = getNextActiveIndex(finishedIndex);
-    if (nextActiveIndex === null) return;
-
-    this.currentTurnIndex = nextActiveIndex;
-    this.tryStartCurrentTurn();
-  }
-}
-
-const raceManager = new RaceManager();
-
-// =========================================================================
-// 🎮 8. محرك لعبة XO
-// =========================================================================
-const WINNING_COMBOS = [
-  [0, 1, 2], [3, 4, 5], [6, 7, 8],
-  [0, 3, 6], [1, 4, 7], [2, 5, 8],
-  [0, 4, 8], [2, 4, 6]
-];
-
-function checkWinner(board) {
-  for (const combo of WINNING_COMBOS) {
-    const [a, b, c] = combo;
-    if (
-      board[a] &&
-      board[a] === board[b] &&
-      board[a] === board[c]
-    ) {
-      return board[a];
-    }
-  }
-
-  if (board.every(cell => cell !== null)) {
-    return "draw";
-  }
-
-  return null;
-}
-
-function minimax(board, depth, isMaximizing, mySign, botSign) {
-  const result = checkWinner(board);
-
-  if (result === mySign) return 10 - depth;
-  if (result === botSign) return depth - 10;
-  if (result === "draw") return 0;
-
-  if (isMaximizing) {
-    let bestScore = -Infinity;
-    for (let i = 0; i < 9; i++) {
-      if (board[i] === null) {
-        board[i] = mySign;
-        const score = minimax(board, depth + 1, false, mySign, botSign);
-        board[i] = null;
-        bestScore = Math.max(bestScore, score);
-      }
-    }
-    return bestScore;
-  } else {
-    let bestScore = Infinity;
-    for (let i = 0; i < 9; i++) {
-      if (board[i] === null) {
-        board[i] = botSign;
-        const score = minimax(board, depth + 1, true, mySign, botSign);
-        board[i] = null;
-        bestScore = Math.min(bestScore, score);
-      }
-    }
-    return bestScore;
-  }
-}
-
-function getBestXOMove(board, mySign, botSign) {
-  let bestScore = -Infinity;
-  let bestMove = -1;
-
-  for (let i = 0; i < 9; i++) {
-    if (board[i] === null) {
-      board[i] = mySign;
-      const score = minimax(board, 0, false, mySign, botSign);
-      board[i] = null;
-
-      if (score > bestScore) {
-        bestScore = score;
-        bestMove = i;
-      }
-    }
-  }
-
-  return bestMove;
-}
-
-// =========================================================================
-// 🤖 9. إنشاء الحسابات وإدارة المهام (Bot Instance)
-// =========================================================================
-function createBot(config) {
-  const client = new WOLF();
-  let isAccountTerminated = false;
-
-  // ----- 🎯 نظام الصيد والبونص المدمج من الكود الأول -----
-  let bonusQueue = [];
-  let bonusQueueSet = new Set();
-  let isBonusProcessing = false;
-  let isBonusResting = false;
-
-  function addToBonusQueue(roomId, command) {
-    if (!roomId || !command) return;
-    const itemKey = `${roomId}:${command}`;
-    if (bonusQueueSet.has(itemKey)) return;
-
-    bonusQueueSet.add(itemKey);
-    bonusQueue.push({ roomId, command, key: itemKey });
-  }
-
-  // دالة انضمام مرنة متوافقة مع جميع إصدارات المكتبة
-  async function joinRoomSafe(roomId) {
-    if (client.groups && typeof client.groups.join === 'function') {
-      await client.groups.join(roomId).catch(() => {});
-    } else if (client.group && typeof client.group.joinById === 'function') {
-      await client.group.joinById(roomId).catch(() => {});
-    } else if (client.group && typeof client.group.join === 'function') {
-      await client.group.join(roomId).catch(() => {});
-    } else if (client.channel && typeof client.channel.joinById === 'function') {
-      await client.channel.joinById(roomId).catch(() => {});
-    } else if (typeof client.joinGroup === 'function') {
-      await client.joinGroup(roomId).catch(() => {});
-    }
-  }
-
-  // دالة معالجة طابور الصيد والمعززات
-  async function processBonusQueue() {
-    if (isBonusProcessing || bonusQueue.length === 0 || isBonusResting) return;
-    isBonusProcessing = true;
-
-    while (bonusQueue.length > 0 && !isBonusResting) {
-      const item = bonusQueue.shift();
-      bonusQueueSet.delete(item.key);
-
-      console.log(`⏳ [${config.name}] انتظار مهلة الصيد (${BONUS_DELAY / 1000}ث)... الروم: ${item.roomId}`);
-      await sleep(BONUS_DELAY);
-
-      if (isBonusResting) {
-        bonusQueueSet.add(item.key);
-        bonusQueue.unshift(item);
-        break;
-      }
-
-      try {
-        await joinRoomSafe(item.roomId);
-        await client.messaging.sendGroupMessage(item.roomId, item.command);
-        console.log(`🚀 [${new Date().toLocaleTimeString('ar-SA')}] [${config.name}] تم الصيد في [${item.roomId}] بأمر: ${item.command}. المتبقي: ${bonusQueue.length}`);
-      } catch (err) {
-        console.error(`❌ [${config.name}] فشل الصيد في الروم ${item.roomId}: ${err.message}`);
-      }
-    }
-
-    isBonusProcessing = false;
-  }
-
-  // نظام إدارة دورة وقت الصيد (54 دقيقة عمل / 6 دقائق راحة)
-  async function startBonusCycle() {
-    while (!isAccountTerminated) {
-      console.log(`🟢 [${config.name}] بدأت دورة الـ 54 دقيقة عمل للصيد والمعززات.`);
-      isBonusResting = false;
-
-      processBonusQueue();
-
-      await sleep(WORK_TIME);
-
-      console.log(`🛑 [${config.name}] بدأت دورة الـ 6 دقائق راحة للصيد. توقف مؤقت.`);
-      isBonusResting = true;
-
-      await sleep(REST_TIME);
-    }
-  }
-
-  // ----- متغيرات XO -----
-  let xoBoard = Array(9).fill(null);
-  let xoMySign = 'X';
-  let xoBotSign = 'O';
-  let xoIsGameEnding = false;
-  let xoIsSending = false;
-
-  function handleXOIncomingData(message) {
-    console.log(`📩 XO من ${config.name}`);
-    const text = getMessageText(message).toLowerCase();
-
-    if (text.includes('لقد فزت') || text.includes('فزت!')) console.log("🏆 تم الفوز");
-    if (text.includes('لقد خسرت') || text.includes('خسرت')) console.log("💀 تم الخسارة");
-    if (text.includes('تعادل')) console.log("🤝 تعادل");
-
-    if (
-      text.includes('won') || text.includes('lost') || text.includes('tie') ||
-      text.includes('draw') || text.includes('game over') || text.includes('لقد فزت') ||
-      text.includes('فزت') || text.includes('لقد خسرت') || text.includes('خسرت') ||
-      text.includes('تعادل') || text.includes('اعادة') || text.includes('إعادة') ||
-      text.includes('تنتهي خلال')
-    ) {
-      if (!xoIsGameEnding) {
-        xoIsGameEnding = true;
-        xoIsSending = false;
-        console.log(`🏁 [${config.name}] انتهاء لعبة XO، إعادة البدء بعد 5 ثوانٍ...`);
-        xoBoard = Array(9).fill(null);
-
-        setTimeout(async () => {
-          xoBoard = Array(9).fill(null);
-          xoIsSending = false;
-          xoIsGameEnding = false;
-
-          try {
-            await globalQueue.add(
-              client,
-              XO_ROOM_ID,
-              XO_START_COMMAND,
-              config.name
-            );
-          } catch (e) {
-            console.error("XO ERROR:", e);
-          }
-        }, 5000);
-      }
-      return;
-    }
-
-    if (text.includes('your turn! (❌)') || text.includes('turn! (❌)')) { xoMySign = 'X'; xoBotSign = 'O'; }
-    else if (text.includes('your turn! (⭕)') || text.includes('turn! (⭕)')) { xoMySign = 'O'; xoBotSign = 'X'; }
-
-    const positions = text.split('xobot-mp-private__content__middle__position');
-    if (positions.length > 1) {
-      for (let i = 0; i < 9; i++) {
-        const block = positions[i + 1] || '';
-        if (block.includes('--x') || block.includes('❌')) xoBoard[i] = 'X';
-        else if (block.includes('--o') || block.includes('⭕')) xoBoard[i] = 'O';
-        else xoBoard[i] = null;
-      }
-    }
-
-    const isMyTurn = text.includes('your turn! (❌)') || text.includes('your turn! (⭕)') || text.includes('دورك!');
-    if (isMyTurn && !xoIsGameEnding && !xoIsSending) {
-      const moveIndex = getBestXOMove(xoBoard, xoMySign, xoBotSign);
-
-      if (moveIndex !== undefined && moveIndex !== -1) {
-        const squareToPlay = (moveIndex + 1).toString();
-        xoIsSending = true;
-        xoBoard[moveIndex] = xoMySign;
-
-        setTimeout(async () => {
-          try {
-            await client.messaging.sendPrivateMessage(XO_BOT_ID, squareToPlay);
-            console.log(`✅ [${config.name}] XO لعب الخانة: ${squareToPlay}`);
-          } catch (e) {
-            console.error(e);
-          } finally {
-            xoIsSending = false;
-          }
-        }, 2000);
-      }
-    }
-  }
-
-  // ----- دالة إرسال أمر السباق -----
-  async function triggerRaceCommand() {
-    const subId = config.id || client.currentSubscriber?.id || client.currentUser?.id;
-    return await globalQueue.add(
-      client,
-      config.sChannel,
-      `!س جلد خاص ${subId}`,
-      config.name
-    );
-  }
-
-  // ----- دالة إرسال آمنة خاصة بقراند -----
-  async function safeSendGrand(roomId, command) {
-    try {
-      if (typeof client.messaging?.sendChannelMessage === 'function') {
-        await client.messaging.sendChannelMessage(Number(roomId), command);
-      } else if (typeof client.messaging?.sendGroupMessage === 'function') {
-        await client.messaging.sendGroupMessage(Number(roomId), command);
-      }
-      console.log(`🧢 [${config.name}] ${command}`);
-      await sleep(2000);
-      return true;
-    } catch (err) {
-      console.error(`❌ [${config.name}] خطأ إرسال قراند: ${err.message}`);
-      return false;
-    }
-  }
-
-  // ----- دورة الطائرة -----
-  async function startAirplaneLoop() {
-    while (!isAccountTerminated) {
-      const cycleStartedAt = Date.now();
-
-      try {
-        await globalQueue.add(client, AIRPLANE_ROOM_ID, '!ط قصف', config.name);
-        if (isAccountTerminated) break;
-
-        if (config.index === 1) {
-          await sleep(2000);
-          await globalQueue.add(client, AIRPLANE_ROOM_ID, '!ط هدية 20300554 2000', config.name);
-
-          await sleep(7000);
-          await globalQueue.add(client, AIRPLANE_ROOM_ID, '!ط خزينة إيداع كل', config.name);
-
-          await sleep(3000);
-          await globalQueue.add(client, AIRPLANE_ROOM_ID, '!ط هجوم 20300554', config.name);
-        } else {
-          await sleep(2000);
-          await globalQueue.add(client, AIRPLANE_ROOM_ID, '!ط هدية 38770375 2000', config.name);
-        }
-      } catch (error) {
-        console.error(`❌ [${config.name}] خطأ في دورة الطائرة:`, error?.message || error);
-      }
-
-      const elapsed = Date.now() - cycleStartedAt;
-      await sleep(Math.max(1000, (8 * 60 * 1000) - elapsed));
-    }
-  }
-
-  // ----- معالجة كافة الرسائل الواردة -----
-  async function handleIncomingMessage(message) {
-    try {
-      const senderId = getSenderId(message);
-      const roomId = getRoomId(message);
-      let body = getMessageText(message);
-      if (!body) return;
-
-      // 1. سباق الحصان
-      if (senderId === Number(TRACKED_BOT_ID)) {
-        const cleanedBody = cleanText(body);
-        if (isEnergyReadyMessage(cleanedBody)) {
-          raceManager.handleEnergyReady(config.index);
-          return;
-        }
-        if (roomId === Number(RACE_ROOM_ID) && cleanedBody.includes('انتهى السباق')) {
-          await raceManager.handleRaceEndMessage(cleanedBody);
-        }
-      }
-
-      // 2. XO
-      if (!message.isGroup && senderId === XO_BOT_ID && XO_ACCOUNTS.includes(config.index)) {
-        handleXOIncomingData(message);
-      }
-
-      // 3. الصيد والبونص الخاص عبر الرسائل الخاصة (PM)
-      if (!message.isGroup) {
-        const trigger = BOT_TRIGGERS.find(t => t.botId === senderId && isAccountInTrigger(t, config));
-
-        if (trigger) {
-          const bonusRoomId = extractRoomIdFromBonus(body);
-          if (bonusRoomId) {
-            console.log(`📥 [حساب ${config.index} - ${config.name}] التقاط صيد من البوت (${senderId}) | الغرفة: ${bonusRoomId} | الأمر: ${trigger.command}`);
-            addToBonusQueue(bonusRoomId, trigger.command);
-
-            if (!isBonusResting) {
-              processBonusQueue();
-            } else {
-              console.log(`⏳ [${config.name}] البوت في استراحة. تم حفظ الغرفة ${bonusRoomId} في الطابور.`);
+            try {
+                // نظام فحص إصدار المكتبة للانضمام للروم
+                if (this.service.groups && typeof this.service.groups.join === 'function') {
+                    await this.service.groups.join(roomId).catch(() => {});
+                } else if (this.service.group && typeof this.service.group.join === 'function') {
+                    await this.service.group.join(roomId).catch(() => {});
+                } else if (typeof this.service.joinGroup === 'function') {
+                    await this.service.joinGroup(roomId).catch(() => {});
+                }
+
+                // إرسال رسالة الصيد
+                await this.service.messaging.sendGroupMessage(roomId, settings.actionWord);
+                console.log(`[حساب ${this.index}] 🚀 [${new Date().toLocaleTimeString('ar-SA')}] تم الصيد في [${roomId}]. المتبقي في الطابور: ${this.heistQueue.length}`);
+            } catch (err) {
+                console.error(`[حساب ${this.index}] ❌ فشل الصيد في الروم ${roomId}: ${err.message}`);
             }
-          }
         }
-      }
-    } catch (err) {
-      console.error(`❌ [${config.name}] خطأ استقبال: ${err.message}`);
+
+        this.isProcessing = false;
     }
-  }
 
-  client.on('message', handleIncomingMessage);
-  client.on('groupMessage', handleIncomingMessage);
+    async manageWorkCycle() {
+        while (true) {
+            console.log(`[حساب ${this.index}] 🟢 [نظام الوقت] بدأت دورة الـ 54 دقيقة عمل.`);
+            this.isResting = false;
+            this.processQueue(); 
 
-  // ----- عند جاهزية الاتصال وتسجيل الدخول -----
-  client.on('ready', async () => {
-    console.log(`✅ [${config.index}] متصل بنجاح: ${config.name} (${client.currentSubscriber?.nickname || 'Online'})`);
+            await sleep(settings.workDuration);
 
-    // تسجيل بوت قراند
-    registerGrandBot(
-      config.index,
-      config.name,
-      (rId, cmd) => safeSendGrand(rId, cmd),
-      () => isAccountTerminated
-    );
-
-    // تسجيل الحساب في السباق
-    raceManager.registerClient(
-      config.index,
-      config,
-      client,
-      () => triggerRaceCommand()
-    );
-
-    // بدء دورة الصيد (54 دقيقة عمل / 6 راحة)
-    startBonusCycle();
-
-    // تشغيل دورة الطائرة إن كان الحساب مخصصاً لها
-    if (AIRPLANE_ACCOUNTS.includes(config.index)) {
-      startAirplaneLoop();
+            console.log(`[حساب ${this.index}] 🛑 [نظام الوقت] بدأت دورة الـ 6 دقائق راحة. يتوقف الصيد مؤقتاً.`);
+            this.isResting = true;
+            
+            await sleep(settings.restDuration);
+        }
     }
-  });
 
-  client.login(config.email, config.password).catch(err => {
-    console.error(`❌ [${config.name}] فشل تسجيل الدخول:`, err.message);
-  });
+    setupEvents() {
+        this.service.on('ready', () => {
+            console.log(`[حساب ${this.index}] ✅ متصل بنجاح: ${this.service.currentSubscriber.nickname}`);
+            this.manageWorkCycle(); 
+        });
 
-  return client;
+        this.service.on('message', async (message) => {
+            // التقاط رسائل الصيد من بوت قراند
+            if (!message.isGroup && (message.sourceSubscriberId === settings.targetBotId || message.authorId === settings.targetBotId)) {
+                
+                const content = message.body || message.content || "";
+                const match = content.match(/\(ID\s*(\d+)\)/);
+                
+                if (match && match[1]) {
+                    const roomId = parseInt(match[1]);
+                    console.log(`[حساب ${this.index}] 📥 إضافة الروم ${roomId} إلى الطابور...`);
+                    
+                    this.heistQueue.push(roomId);
+                    
+                    if (!this.isResting) {
+                        this.processQueue();
+                    } else {
+                        console.log(`[حساب ${this.index}] ⏳ استراحة حالياً. سيتم معالجة الروم ${roomId} فور العودة للعمل.`);
+                    }
+                }
+            }
+        });
+    }
+
+    async start() {
+        try {
+            await this.service.login(this.email, this.password);
+        } catch (err) {
+            console.error(`[حساب ${this.index}] ❌ فشل تسجيل الدخول: ${err.message}`);
+        }
+    }
 }
 
-// =========================================================================
-// 🚀 10. تشغيل النظام المركزي لكافة الحسابات
-// =========================================================================
-console.log('⚡ جاري تشغيل كافة الحسابات والأنظمة المركزية...');
+// دالة لتشغيل جميع الحسابات
+const startAllAccounts = async () => {
+    console.log("جارٍ تشغيل الحسابات...");
+    
+    for (let i = 1; i <= 12; i++) {
+        const email = process.env[`U_MAIL_${i}`];
+        const password = process.env[`U_PASS_${i}`];
 
-ACCOUNTS.forEach(acc => {
-  if (acc.email && acc.password) {
-    createBot(acc);
-  }
-});
+        if (email && password) {
+            const bot = new GrandBot(email, password, i);
+            bot.start();
+            
+            // تأخير 3 ثواني بين دخول كل حساب لتجنب حظر الشبكة (Rate Limit) من سيرفرات ولف
+            await sleep(3000); 
+        } else {
+            console.log(`⚠️ بيانات الحساب رقم ${i} غير مكتملة في ملف .env، تم تخطيه.`);
+        }
+    }
+};
 
-// بدء دورات قراند والسباق
-startGrandSchedulersOnce();
-setTimeout(() => {
-  raceManager.start();
-}, 10000);
+startAllAccounts();
