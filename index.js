@@ -2,7 +2,6 @@ import 'dotenv/config';
 
 process.env.SUPPRESS_NO_CONFIG_WARNING = 'true';
 
-
 // =========================================================================
 // 🧹 1. تنظيف وفلترة سجلات الكونسول (Console Logs)
 // =========================================================================
@@ -42,28 +41,19 @@ console.error = (...args) => {
   if (shouldHide(text)) return;
   originalError(...args);
 };
+
 const originalStdoutWrite = process.stdout.write.bind(process.stdout);
-
 process.stdout.write = (chunk, encoding, callback) => {
-    const text = chunk?.toString?.() || '';
-
-    if (shouldHide(text)) {
-        return true;
-    }
-
-    return originalStdoutWrite(chunk, encoding, callback);
+  const text = chunk?.toString?.() || '';
+  if (shouldHide(text)) return true;
+  return originalStdoutWrite(chunk, encoding, callback);
 };
 
 const originalStderrWrite = process.stderr.write.bind(process.stderr);
-
 process.stderr.write = (chunk, encoding, callback) => {
-    const text = chunk?.toString?.() || '';
-
-    if (shouldHide(text)) {
-        return true;
-    }
-
-    return originalStderrWrite(chunk, encoding, callback);
+  const text = chunk?.toString?.() || '';
+  if (shouldHide(text)) return true;
+  return originalStderrWrite(chunk, encoding, callback);
 };
 
 // =========================================================================
@@ -88,9 +78,9 @@ const XO_START_COMMAND = '!xo private ai 3';
 
 const RACE_END_TIMEOUT_MS = 120 * 1000;    // 2 دقيقة لمراقبة انتهاء السباق
 const ENERGY_FALLBACK_MS = 11 * 60 * 1000; // 11 دقيقة كحد أقصى لاسترجاع الطاقة
-const BONUS_DELAY = 12000;                  // 12 ثانية بين إرسال المعززات
-const WORK_TIME = 54 * 60 * 1000;           // 54 دقيقة عمل للمعززات
-const REST_TIME = 6 * 60 * 1000;            // 6 دقائق راحة للمعززات
+const BONUS_DELAY = 11000;                  // 11 ثانية فاصل بين الصيد
+const WORK_TIME = 54 * 60 * 1000;           // 54 دقيقة عمل للمعززات والصيد
+const REST_TIME = 6 * 60 * 1000;            // 6 دقائق راحة للمعززات والصيد
 
 const ACCOUNTS = [
   { email: process.env.U_MAIL_1, password: process.env.U_PASS_1, name: 'King', id: 38770375, index: 1, sChannel: 569 },
@@ -117,25 +107,23 @@ const GRAND_COLLECT_ACCOUNTS       = [];
 const GRAND_STEAL_ATTACK_COUNTS    = [];
 const GRAND_LOTTERY_ACCOUNTS       = [];
 
-// 🎁 تحديد الحسابات والأوامر المخصصة للمعززات
+// 🎁 تحديد الحسابات والأوامر المخصصة للمعززات والصيد
 const BONUS_ACCOUNTS_STEAL  = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 const BONUS_ACCOUNTS_HERO   = [];
 const BONUS_ACCOUNTS_HUNTER = [];
 const BONUS_ACCOUNTS_HUNT   = [];
 
+// ربط معرف البوت المستهدف بالأمر والحسابات المفعلة
 const BOT_TRIGGERS = [
-  { command: "!اسرق 5", accounts: 39369782 },
-  { command: "!بطل 5",  accounts: 45578849 },
-  { command: "!صياد 3", accounts: 76305584 },
-  { command: "!صيد 3",  accounts: 32060007 }
+  { botId: 39369782, command: "!اسرق 5", accounts: BONUS_ACCOUNTS_STEAL },
+  { botId: 45578849, command: "!بطل 5",  accounts: BONUS_ACCOUNTS_HERO },
+  { botId: 76305584, command: "!صياد 3", accounts: BONUS_ACCOUNTS_HUNTER },
+  { botId: 32060007, command: "!صيد 3",  accounts: BONUS_ACCOUNTS_HUNT }
 ];
 
 function isAccountInTrigger(trigger, config) {
   if (!trigger || !trigger.accounts) return false;
-  if (Array.isArray(trigger.accounts)) {
-    return trigger.accounts.includes(config.index) || trigger.accounts.includes(config.id);
-  }
-  return trigger.accounts === config.index || trigger.accounts === config.id;
+  return trigger.accounts.includes(config.index) || trigger.accounts.includes(config.id);
 }
 
 function isAccountActive(index) {
@@ -302,7 +290,7 @@ function startGrandSchedulersOnce() {
 // =========================================================================
 function getSenderId(message) {
   return Number(
-    message.sourceSubscriberId || message.sourceUserId ||
+    message.sourceSubscriberId || message.authorId || message.sourceUserId ||
     message.sourceId || message.senderId || message.userId || 0
   );
 }
@@ -347,22 +335,6 @@ function extractRoomIdFromBonus(text = "") {
   if (!match) match = cleaned.match(/\((\d+)\)/);
   if (!match) match = cleaned.match(/\b(\d{3,})\b/);
   return match ? Number(match[1]) : null;
-}
-
-function extractSenderIdFromBonus(text = "") {
-  const cleaned = cleanText(text).replace(/\s+/g, ' ');
-  const matches = [...cleaned.matchAll(/\(ID\s*(\d+)\)|\((\d+)\)/gi)];
-  if (matches.length < 2) return null;
-  const last = matches[matches.length - 1];
-  return Number(last[1] || last[2]);
-}
-
-function isBonusMessage(content = "") {
-  return (
-    /Bonus-/i.test(content) ||
-    content.includes("معزز") ||
-    content.includes("معزز إضافي")
-  );
 }
 
 // =========================================================================
@@ -675,7 +647,6 @@ function minimax(board, depth, isMaximizing, mySign, botSign) {
 
   if (isMaximizing) {
     let bestScore = -Infinity;
-
     for (let i = 0; i < 9; i++) {
       if (board[i] === null) {
         board[i] = mySign;
@@ -684,11 +655,9 @@ function minimax(board, depth, isMaximizing, mySign, botSign) {
         bestScore = Math.max(bestScore, score);
       }
     }
-
     return bestScore;
   } else {
     let bestScore = Infinity;
-
     for (let i = 0; i < 9; i++) {
       if (board[i] === null) {
         board[i] = botSign;
@@ -697,7 +666,6 @@ function minimax(board, depth, isMaximizing, mySign, botSign) {
         bestScore = Math.min(bestScore, score);
       }
     }
-
     return bestScore;
   }
 }
@@ -709,15 +677,7 @@ function getBestXOMove(board, mySign, botSign) {
   for (let i = 0; i < 9; i++) {
     if (board[i] === null) {
       board[i] = mySign;
-
-      const score = minimax(
-        board,
-        0,
-        false,
-        mySign,
-        botSign
-      );
-
+      const score = minimax(board, 0, false, mySign, botSign);
       board[i] = null;
 
       if (score > bestScore) {
@@ -735,11 +695,9 @@ function getBestXOMove(board, mySign, botSign) {
 // =========================================================================
 function createBot(config) {
   const client = new WOLF();
-console.log("Messaging methods:", Object.keys(client.messaging));
-  
   let isAccountTerminated = false;
 
-  // ----- متغيرات المعززات -----
+  // ----- 🎯 نظام الصيد والبونص المدمج من الكود الأول -----
   let bonusQueue = [];
   let bonusQueueSet = new Set();
   let isBonusProcessing = false;
@@ -751,48 +709,65 @@ console.log("Messaging methods:", Object.keys(client.messaging));
     if (bonusQueueSet.has(itemKey)) return;
 
     bonusQueueSet.add(itemKey);
-    bonusQueue.unshift({ roomId, command, key: itemKey });
+    bonusQueue.push({ roomId, command, key: itemKey });
   }
 
+  // دالة انضمام مرنة متوافقة مع جميع إصدارات المكتبة
+  async function joinRoomSafe(roomId) {
+    if (client.groups && typeof client.groups.join === 'function') {
+      await client.groups.join(roomId).catch(() => {});
+    } else if (client.group && typeof client.group.joinById === 'function') {
+      await client.group.joinById(roomId).catch(() => {});
+    } else if (client.group && typeof client.group.join === 'function') {
+      await client.group.join(roomId).catch(() => {});
+    } else if (client.channel && typeof client.channel.joinById === 'function') {
+      await client.channel.joinById(roomId).catch(() => {});
+    } else if (typeof client.joinGroup === 'function') {
+      await client.joinGroup(roomId).catch(() => {});
+    }
+  }
+
+  // دالة معالجة طابور الصيد والمعززات
   async function processBonusQueue() {
-    if (isBonusProcessing) return;
+    if (isBonusProcessing || bonusQueue.length === 0 || isBonusResting) return;
     isBonusProcessing = true;
 
-    while (bonusQueue.length > 0) {
-      if (isBonusResting) break;
-
+    while (bonusQueue.length > 0 && !isBonusResting) {
       const item = bonusQueue.shift();
       bonusQueueSet.delete(item.key);
 
-      try {
-        if (typeof client.group?.joinById === 'function') await client.group.joinById(item.roomId);
-        else if (typeof client.channel?.joinById === 'function') await client.channel.joinById(item.roomId);
-        else if (typeof client.groups?.join === 'function') await client.groups.join(item.roomId);
-        else if (typeof client.group?.join === 'function') await client.group.join(item.roomId);
+      console.log(`⏳ [${config.name}] انتظار مهلة الصيد (${BONUS_DELAY / 1000}ث)... الروم: ${item.roomId}`);
+      await sleep(BONUS_DELAY);
 
-        await client.messaging.sendGroupMessage(item.roomId, item.command);
-        console.log(`🚀 [حساب ${config.index} - ${config.name}] دخل ${item.roomId} وأرسل: ${item.command}`);
-
-      } catch (err) {
-        console.log(`❌ [حساب ${config.index} - ${config.name}] خطأ معزز: ${err.message}`);
+      if (isBonusResting) {
+        bonusQueueSet.add(item.key);
+        bonusQueue.unshift(item);
+        break;
       }
 
-      await sleep(BONUS_DELAY);
+      try {
+        await joinRoomSafe(item.roomId);
+        await client.messaging.sendGroupMessage(item.roomId, item.command);
+        console.log(`🚀 [${new Date().toLocaleTimeString('ar-SA')}] [${config.name}] تم الصيد في [${item.roomId}] بأمر: ${item.command}. المتبقي: ${bonusQueue.length}`);
+      } catch (err) {
+        console.error(`❌ [${config.name}] فشل الصيد في الروم ${item.roomId}: ${err.message}`);
+      }
     }
 
     isBonusProcessing = false;
   }
 
+  // نظام إدارة دورة وقت الصيد (54 دقيقة عمل / 6 دقائق راحة)
   async function startBonusCycle() {
-    while (true) {
-      console.log(`🟢 [حساب ${config.index} - ${config.name}] تشغيل 54 دقيقة معززات`);
+    while (!isAccountTerminated) {
+      console.log(`🟢 [${config.name}] بدأت دورة الـ 54 دقيقة عمل للصيد والمعززات.`);
       isBonusResting = false;
 
       processBonusQueue();
 
       await sleep(WORK_TIME);
 
-      console.log(`🛑 [حساب ${config.index} - ${config.name}] راحة 6 دقائق معززات`);
+      console.log(`🛑 [${config.name}] بدأت دورة الـ 6 دقائق راحة للصيد. توقف مؤقت.`);
       isBonusResting = true;
 
       await sleep(REST_TIME);
@@ -806,71 +781,43 @@ console.log("Messaging methods:", Object.keys(client.messaging));
   let xoIsGameEnding = false;
   let xoIsSending = false;
 
- function handleXOIncomingData(message) {
+  function handleXOIncomingData(message) {
+    console.log(`📩 XO من ${config.name}`);
+    const text = getMessageText(message).toLowerCase();
 
-   console.log(`📩 XO من ${config.name}`);
+    if (text.includes('لقد فزت') || text.includes('فزت!')) console.log("🏆 تم الفوز");
+    if (text.includes('لقد خسرت') || text.includes('خسرت')) console.log("💀 تم الخسارة");
+    if (text.includes('تعادل')) console.log("🤝 تعادل");
 
-   const text = getMessageText(message).toLowerCase();
-   //console.log("TEXT:", text);
-   //console.log("ENDING:", xoIsGameEnding);
-   //console.log("SENDING:", xoIsSending);
-if (text.includes('لقد فزت') || text.includes('فزت!')) {
-    console.log("🏆 تم الفوز");
-}
-
-if (text.includes('لقد خسرت') || text.includes('خسرت')) {
-    console.log("💀 تم الخسارة");
-}
-
-if (text.includes('تعادل')) {
-    console.log("🤝 تعادل");
-}
-   
-if (
-    text.includes('won') ||
-    text.includes('lost') ||
-    text.includes('tie') ||
-    text.includes('draw') ||
-    text.includes('game over') ||
-
-    text.includes('لقد فزت') ||
-    text.includes('فزت') ||
-    text.includes('لقد خسرت') ||
-    text.includes('خسرت') ||
-    text.includes('تعادل') ||
-    text.includes('اعادة') ||
-    text.includes('إعادة') ||
-    text.includes('تنتهي خلال')
-) {
-  if (!xoIsGameEnding) {
+    if (
+      text.includes('won') || text.includes('lost') || text.includes('tie') ||
+      text.includes('draw') || text.includes('game over') || text.includes('لقد فزت') ||
+      text.includes('فزت') || text.includes('لقد خسرت') || text.includes('خسرت') ||
+      text.includes('تعادل') || text.includes('اعادة') || text.includes('إعادة') ||
+      text.includes('تنتهي خلال')
+    ) {
+      if (!xoIsGameEnding) {
         xoIsGameEnding = true;
         xoIsSending = false;
         console.log(`🏁 [${config.name}] انتهاء لعبة XO، إعادة البدء بعد 5 ثوانٍ...`);
         xoBoard = Array(9).fill(null);
 
-     setTimeout(async () => {
-  console.log("🔥 دخل مؤقت إعادة البداية");
+        setTimeout(async () => {
+          xoBoard = Array(9).fill(null);
+          xoIsSending = false;
+          xoIsGameEnding = false;
 
-  // افتح استقبال اللعبة الجديدة قبل الإرسال
-  xoBoard = Array(9).fill(null);
-  xoIsSending = false;
-  xoIsGameEnding = false;
-
-  try {
-    console.log("🎮 إرسال أمر البداية...");
-
-    const ok = await globalQueue.add(
-      client,
-      XO_ROOM_ID,
-      XO_START_COMMAND,
-      config.name
-    );
-
-    console.log("RESULT:", ok);
-  } catch (e) {
-    console.error("XO ERROR:", e);
-  }
-}, 5000);
+          try {
+            await globalQueue.add(
+              client,
+              XO_ROOM_ID,
+              XO_START_COMMAND,
+              config.name
+            );
+          } catch (e) {
+            console.error("XO ERROR:", e);
+          }
+        }, 5000);
       }
       return;
     }
@@ -888,41 +835,25 @@ if (
       }
     }
 
-const isMyTurn =
-    text.includes('your turn! (❌)') ||
-    text.includes('your turn! (⭕)') ||
-    text.includes('دورك!');
-   if (isMyTurn && !xoIsGameEnding && !xoIsSending) {
+    const isMyTurn = text.includes('your turn! (❌)') || text.includes('your turn! (⭕)') || text.includes('دورك!');
+    if (isMyTurn && !xoIsGameEnding && !xoIsSending) {
       const moveIndex = getBestXOMove(xoBoard, xoMySign, xoBotSign);
-      console.log("BOARD:", xoBoard);
-console.log("MOVE:", moveIndex);
-      
+
       if (moveIndex !== undefined && moveIndex !== -1) {
         const squareToPlay = (moveIndex + 1).toString();
         xoIsSending = true;
         xoBoard[moveIndex] = xoMySign;
 
-        xoIsSending = true;
-
-setTimeout(async () => {
-    try {
-        console.log("🎯 سأرسل:", squareToPlay);
-
-        await client.messaging.sendPrivateMessage(
-            XO_BOT_ID,
-            squareToPlay
-        );
-
-        console.log(`✅ [${config.name}] XO لعب الخانة: ${squareToPlay}`);
-
-    } catch (e) {
-        console.error(e);
-
-    } finally {
-        xoIsSending = false;
-    }
-
-}, 2000);
+        setTimeout(async () => {
+          try {
+            await client.messaging.sendPrivateMessage(XO_BOT_ID, squareToPlay);
+            console.log(`✅ [${config.name}] XO لعب الخانة: ${squareToPlay}`);
+          } catch (e) {
+            console.error(e);
+          } finally {
+            xoIsSending = false;
+          }
+        }, 2000);
       }
     }
   }
@@ -955,7 +886,7 @@ setTimeout(async () => {
     }
   }
 
-  // ----- دورة الطائرة المحدثة من الكود الثاني -----
+  // ----- دورة الطائرة -----
   async function startAirplaneLoop() {
     while (!isAccountTerminated) {
       const cycleStartedAt = Date.now();
@@ -968,11 +899,9 @@ setTimeout(async () => {
           await sleep(2000);
           await globalQueue.add(client, AIRPLANE_ROOM_ID, '!ط هدية 20300554 2000', config.name);
 
-          // بعد الهدية بـ7 ثوانٍ: إيداع الخزينة
           await sleep(7000);
           await globalQueue.add(client, AIRPLANE_ROOM_ID, '!ط خزينة إيداع كل', config.name);
 
-          // الهجوم بعد 3 ثوانٍ إضافية (مجموع 10 ثوانٍ من الهدية)
           await sleep(3000);
           await globalQueue.add(client, AIRPLANE_ROOM_ID, '!ط هجوم 20300554', config.name);
         } else {
@@ -1013,22 +942,22 @@ setTimeout(async () => {
         handleXOIncomingData(message);
       }
 
-      // 3. المعززات (البونص)
-      if (!message.isGroup && isBonusMessage(body)) {
-        const bonusRoomId = extractRoomIdFromBonus(body);
-        if (!bonusRoomId) return;
+      // 3. الصيد والبونص الخاص عبر الرسائل الخاصة (PM)
+      if (!message.isGroup) {
+        const trigger = BOT_TRIGGERS.find(t => t.botId === senderId && isAccountInTrigger(t, config));
 
-        const bonusSenderId = extractSenderIdFromBonus(body);
-
-        BOT_TRIGGERS.forEach(trigger => {
-          if (isAccountInTrigger(trigger, config)) {
-            console.log(`📥 [حساب ${config.index} - ${config.name}] غرفة: ${bonusRoomId} | صاحب المعزز: ${bonusSenderId || 'عام'} | الأمر: ${trigger.command}`);
+        if (trigger) {
+          const bonusRoomId = extractRoomIdFromBonus(body);
+          if (bonusRoomId) {
+            console.log(`📥 [حساب ${config.index} - ${config.name}] التقاط صيد من البوت (${senderId}) | الغرفة: ${bonusRoomId} | الأمر: ${trigger.command}`);
             addToBonusQueue(bonusRoomId, trigger.command);
-          }
-        });
 
-        if (!isBonusResting) {
-          processBonusQueue();
+            if (!isBonusResting) {
+              processBonusQueue();
+            } else {
+              console.log(`⏳ [${config.name}] البوت في استراحة. تم حفظ الغرفة ${bonusRoomId} في الطابور.`);
+            }
+          }
         }
       }
     } catch (err) {
@@ -1039,92 +968,55 @@ setTimeout(async () => {
   client.on('message', handleIncomingMessage);
   client.on('groupMessage', handleIncomingMessage);
 
-  // ----- عند جاهزية الاتصال -----
-  client.on('ready', () => {
-    console.log(`✅ الحساب ${config.index} (${config.name}) جاهز`);
+  // ----- عند جاهزية الاتصال وتسجيل الدخول -----
+  client.on('ready', async () => {
+    console.log(`✅ [${config.index}] متصل بنجاح: ${config.name} (${client.currentSubscriber?.nickname || 'Online'})`);
 
-    // أ) التسجيل بالسباق
-    if (isAccountActive(config.index)) {
-      raceManager.registerClient(config.index, config, client, triggerRaceCommand);
-      if (config.index === getFirstActiveIndex()) {
-        setTimeout(() => raceManager.start(), 5000);
-      }
-    }
+    // تسجيل بوت قراند
+    registerGrandBot(
+      config.index,
+      config.name,
+      (rId, cmd) => safeSendGrand(rId, cmd),
+      () => isAccountTerminated
+    );
 
-    // ب) تشغيل دورة المعززات للحسابات المخصصة
-    const isAssignedToBonus = BOT_TRIGGERS.some(t => isAccountInTrigger(t, config));
-    if (isAssignedToBonus) {
-      startBonusCycle();
-    }
+    // تسجيل الحساب في السباق
+    raceManager.registerClient(
+      config.index,
+      config,
+      client,
+      () => triggerRaceCommand()
+    );
 
-    // ج) لعبة XO
-    // ج) لعبة XO
-if (XO_ACCOUNTS.includes(config.index)) {
-    setTimeout(async () => {
-        try {
-            console.log(`🎮 [${config.name}] جاري إرسال أمر البداية...`);
+    // بدء دورة الصيد (54 دقيقة عمل / 6 راحة)
+    startBonusCycle();
 
-           await globalQueue.add(
-    client,
-    XO_ROOM_ID,
-    XO_START_COMMAND,
-    config.name
-);
-
-            console.log(`✅ [${config.name}] تم إرسال أمر البداية`);
-        } catch (e) {
-            console.error(`❌ [${config.name}] فشل إرسال أمر XO`);
-            console.error(e);
-        }
-    }, 3000);
-}
-
-    // د) تسجيل الحساب في مدير قراند المركزي
-    if (
-      GRAND_COLLECT_ACCOUNTS.includes(config.index) ||
-      GRAND_STEAL_ATTACK_COUNTS.includes(config.index) ||
-      GRAND_LOTTERY_ACCOUNTS.includes(config.index)
-    ) {
-      registerGrandBot(
-        config.index,
-        config.name,
-        safeSendGrand,
-        () => isAccountTerminated
-      );
-      startGrandSchedulersOnce();
-    }
-
-    // هـ) تشغيل دورة الطائرة المطورة
+    // تشغيل دورة الطائرة إن كان الحساب مخصصاً لها
     if (AIRPLANE_ACCOUNTS.includes(config.index)) {
-      startAirplaneLoop().catch(err => {
-        console.error(`❌ [${config.name}] خطأ في حلقة الطائرة:`, err?.message);
-      });
+      startAirplaneLoop();
     }
   });
 
-  // تسجيل الدخول
-  try {
-    const loginResult = client.login(config.email, config.password);
-    if (loginResult && typeof loginResult.catch === 'function') {
-      loginResult.catch((err) => {
-        console.error(`❌ [${config.name}] فشل تسجيل الدخول: ${err.message}`);
-      });
-    }
-  } catch (err) {
-    console.error(`❌ [${config.name}] خطأ تسجيل الدخول: ${err.message}`);
-  }
+  client.login(config.email, config.password).catch(err => {
+    console.error(`❌ [${config.name}] فشل تسجيل الدخول:`, err.message);
+  });
+
+  return client;
 }
 
 // =========================================================================
-// 🚀 10. تشغيل الحسابات بالتتابع (فاصل 4 ثوانٍ)
+// 🚀 10. تشغيل النظام المركزي لكافة الحسابات
 // =========================================================================
-let loginOrder = 0;
+console.log('⚡ جاري تشغيل كافة الحسابات والأنظمة المركزية...');
 
-ACCOUNTS.forEach((account) => {
-  if (!account.email || !account.password) {
-    return;
+ACCOUNTS.forEach(acc => {
+  if (acc.email && acc.password) {
+    createBot(acc);
   }
-
-  setTimeout(() => createBot(account), loginOrder * 4000);
-  loginOrder++;
 });
+
+// بدء دورات قراند والسباق
+startGrandSchedulersOnce();
+setTimeout(() => {
+  raceManager.start();
+}, 10000);
