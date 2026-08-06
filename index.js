@@ -74,85 +74,104 @@ const accounts = [
   { identity: process.env.U_MAIL_9, secret: process.env.U_PASS_9 },
   { identity: process.env.U_MAIL_10, secret: process.env.U_PASS_10 },
   { identity: process.env.U_MAIL_11, secret: process.env.U_PASS_11 },
-  { identity: process.env.U_MAIL_12, secret: process.env.U_PASS_12 },
-  { identity: process.env.U_MAIL_13, secret: process.env.U_PASS_13 },
-  { identity: process.env.U_MAIL_14, secret: process.env.U_PASS_14 }
+  { identity: process.env.U_MAIL_12, secret: process.env.U_PASS_12 }
 ];
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // =========================================================================
-// 🔥 3. استخراج Room ID
+// 🔥 3. استخراج Room ID ودوال التعامل مع المكتبة بشكل آمن
 // =========================================================================
 function extractRoomId(text = "") {
+  if (!text) return null;
   const cleaned = text.replace(/[\u200B-\u200F\uFEFF]/g, '');
-  const match = cleaned.match(/ID\s*(\d{5,})|\((\d{5,})\)/);
-  const id = match?.[1] || match?.[2];
+  // البحث عن أرقام الروم سواء مسبوقة بـ ID أو بين أقواس أو أرقام مجردة (5 أرقام فأكثر)
+  const match = cleaned.match(/ID\s*(\d{5,})|\((\d{5,})\)|(\d{5,})/i);
+  const id = match?.[1] || match?.[2] || match?.[3];
   return id ? parseInt(id, 10) : null;
 }
 
+// دالة الانضمام الآمنة
+async function joinGroupSafe(service, roomId) {
+  if (typeof service.groups?.join === 'function') {
+    return await service.groups.join(roomId);
+  } else if (typeof service.group?.join === 'function') {
+    return await service.group.join(roomId);
+  } else if (typeof service.joinGroup === 'function') {
+    return await service.joinGroup(roomId);
+  }
+}
+
+// دالة الإرسال الآمنة
+async function sendMessageSafe(service, roomId, text) {
+  if (typeof service.messaging?.sendGroupMessage === 'function') {
+    return await service.messaging.sendGroupMessage(roomId, text);
+  } else if (typeof service.messaging?.sendChannelMessage === 'function') {
+    return await service.messaging.sendChannelMessage(roomId, text);
+  } else if (typeof service.messaging?.sendMessage === 'function') {
+    return await service.messaging.sendMessage(roomId, text);
+  } else if (typeof service.sendGroupMessage === 'function') {
+    return await service.sendGroupMessage(roomId, text);
+  } else {
+    throw new Error('لم يتم العثور على دالة إرسال متوافقة في المكتبة');
+  }
+}
+
 // =========================================================================
-// 🤖 4. تشغيل الحسابات بشكل مستقل
+// 🤖 4. تشغيل الحسابات الـ 14 بشكل مستقل
 // =========================================================================
 accounts.forEach((acc, index) => {  
   const service = new WOLF();
 
   // 📦 طابور + منع تكرار لكل حساب
   let queue = [];
-  let queueSet = new Set(); // لمنع التكرار
+  let queueSet = new Set();
   let isProcessing = false;
 
-  // ⏱️ نظام الراحة
+  // ⏱️ نظام الراحة والدورة الزمنية
   let isResting = false;
 
-  const WORK_TIME = 54 * 60 * 1000;
-  const REST_TIME = 6 * 60 * 1000;
-  const DELAY = 12000;
+  const WORK_TIME = 54 * 60 * 1000; // 54 دقيقة عمل
+  const REST_TIME = 6 * 60 * 1000;   // 6 دقائق راحة
+  const DELAY = 3000;                // تأخير 3 ثوان بين كل إرسال
 
   // =====================
-  // 📥 إضافة للروم (بدون تكرار + أولوية جديدة)
+  // 📥 إضافة للروم مع إعطاء الأولوية للجديد
   // =====================
   function addToQueue(roomId) {
     if (!roomId) return;
-
-    // 🔴 منع التكرار
-    if (queueSet.has(roomId)) return;
+    if (queueSet.has(roomId)) return; // منع التكرار
 
     queueSet.add(roomId);
-
-    // 🔥 أولوية للرومات الجديدة (تدخل أول الطابور)
-    queue.unshift(roomId);
+    queue.unshift(roomId); // إدخال الروم في أول الطابور
   }
 
   // =====================
-  // 🔁 تنفيذ الطابور
+  // 🔁 تنفيذ عناصر الطابور
   // =====================
   async function processQueue() {
     if (isProcessing) return;
     isProcessing = true;
 
     while (queue.length > 0) {
-
       if (isResting) break;
 
       const roomId = queue.shift();
-      queueSet.delete(roomId); // إزالة من قائمة التكرار
+      queueSet.delete(roomId);
 
       try {
-        if (service.groups?.join) {
-          await service.groups.join(roomId);
-        } else if (service.group?.join) {
-          await service.group.join(roomId);
-        } else if (service.joinGroup) {
-          await service.joinGroup(roomId);
-        }
+        // 1. محاولة الانضمام للروم
+        await joinGroupSafe(service, roomId).catch(() => {});
+        
+        // مهلة بسيطة لتأكيد الانضمام لدى السيرفر
+        await sleep(500);
 
-        await service.messaging.sendGroupMessage(roomId, "!اسرق 5");
-
-        console.log(`🚀 [${index + 1}] نفذ على ${roomId}`);
+        // 2. إرسال أمر السرقة
+        await sendMessageSafe(service, roomId, "!اسرق 5");
+        console.log(`🚀 [${index + 1}] تم الإرسال بنجاح إلى الروم: ${roomId}`);
 
       } catch (err) {
-        console.log(`❌ [${index + 1}] خطأ:`, err.message);
+        console.log(`❌ [${index + 1}] فشل الإرسال للروم (${roomId}):`, err.message || err);
       }
 
       await sleep(DELAY);
@@ -162,9 +181,10 @@ accounts.forEach((acc, index) => {
   }
 
   // =====================
-  // 📩 استقبال الرسائل
+  // 📩 استقبال وتحليل الرسائل
   // =====================
   service.on('message', async (message) => {
+    // استقبال رسائل الخاص فقط
     if (message.isGroup) return;
 
     const content =
@@ -185,7 +205,7 @@ accounts.forEach((acc, index) => {
     const roomId = extractRoomId(content);
     if (!roomId) return;
 
-    console.log(`📥 [${index + 1}] استلم: ${roomId}`);
+    console.log(`📥 [${index + 1}] استلم الروم: ${roomId}`);
 
     addToQueue(roomId);
 
@@ -195,19 +215,18 @@ accounts.forEach((acc, index) => {
   });
 
   // =====================
-  // ⏱️ دورة 54 / 6
+  // ⏱️ إدارة دورة 54 / 6
   // =====================
   async function cycle() {
     while (true) {
-
-      console.log(`🟢 [${index + 1}] تشغيل 54 دقيقة`);
+      console.log(`🟢 [${index + 1}] بدأت دورة العمل (54 دقيقة)`);
       isResting = false;
 
       processQueue();
 
       await sleep(WORK_TIME);
 
-      console.log(`🛑 [${index + 1}] راحة 6 دقائق`);
+      console.log(`🛑 [${index + 1}] بدأت فترة الراحة (6 دقائق)`);
       isResting = true;
 
       await sleep(REST_TIME);
@@ -215,9 +234,10 @@ accounts.forEach((acc, index) => {
   }
 
   service.on('ready', () => {
-    console.log(`✅ الحساب ${index + 1} جاهز`);
+    console.log(`✅ الحساب [${index + 1}] جاهز ومتصل`);
     cycle();
   });
 
+  // تسجيل الدخول
   service.login(acc.identity, acc.secret);
 });
